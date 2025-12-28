@@ -1,7 +1,5 @@
 # 🔐 MSK – Secure Local Password Manager
 
-## About
-
 **MSK** is a lightweight password manager designed to keep all your credentials **securely stored on your own computer**, without ever exposing them to the internet.
 
 All passwords are **encrypted using a master password**, ensuring that even if someone gains access to your machine, they won’t be able to view any stored data without the correct master key.
