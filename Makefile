@@ -8,4 +8,4 @@ run:
 	go run ./cmd/msk/main.go
 
 config:
-	go run ./cmd/msk/main.go config
+	go run ./cmd/msk/main.go config -m "master-key-example"

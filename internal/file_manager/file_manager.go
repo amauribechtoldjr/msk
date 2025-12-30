@@ -68,5 +68,7 @@ func InitMSKConfig(masterKey []byte) error {
 	err = saveFile(reader)
 	c(err)
 
+	fmt.Println("MSK initialized successfully.")
+
 	return nil
 }
