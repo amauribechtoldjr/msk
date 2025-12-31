@@ -2,73 +2,89 @@ package file_manager
 
 import (
 	"bytes"
-	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
-	"strings"
 
 	fm "github.com/amauribechtoldjr/msk/internal/file_crypt"
 	u "github.com/amauribechtoldjr/msk/utils"
 )
 
-var c = u.Check
+var p = u.Panic
 
 const MSK_BASE_PATH = "./assets/msk_base.csv"
 const MSK_OUTPUT_DATA = "./bin/msk.txt"
 
-func read(fileContent string) {
-	reader := strings.NewReader(fileContent)
+// func read(fileContent string) {
+// 	reader := strings.NewReader(fileContent)
 
-	r := csv.NewReader(reader)
+// 	r := csv.NewReader(reader)
 
-	for {
-		record, err := r.Read()
+// 	for {
+// 		record, err := r.Read()
 
-		if err == io.EOF {
-			break
-		}
+// 		if err == io.EOF {
+// 			break
+// 		}
 
-		if err != nil {
-			log.Fatal(err)
-		}
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
 
-		fmt.Println(record[1])
-		fmt.Println(record[0])
-	}
-}
+// 		fmt.Println(record[1])
+// 		fmt.Println(record[0])
+// 	}
+// }
 
 func saveFile(reader io.Reader) error {
-	if _, err := os.Stat(MSK_OUTPUT_DATA); err == nil {
-		fmt.Printf("You already have configured MSK on this machine.")
-		return nil
-	}
-
 	destinationFile, err := os.Create(MSK_OUTPUT_DATA)
-	c(err)
+	p(err)
 	defer destinationFile.Close()
 
 	_, err = io.Copy(destinationFile, reader)
-	c(err)
+	p(err)
 
 	return nil
 }
 
-func InitMSKConfig(masterKey []byte) error {
+func SetUpMSK(mk []byte) error {
+	if _, err := os.Stat(MSK_OUTPUT_DATA); err == nil {
+		return errors.New("MSK is already set up on this machine.")
+	}
+
+	fmt.Printf("key to setup: %s", mk)
+	
 	file, err := os.Open(MSK_BASE_PATH)
-	c(err)
+	p(err)
+	defer file.Close()
 	
 	fileData, err := io.ReadAll(file)
-	c(err)
+	p(err)
 
-	cipherFile := fm.Encrypt(fileData, masterKey)
+	cipherFile := fm.Encrypt(fileData, mk)
 	reader := bytes.NewReader(cipherFile)
 
 	err = saveFile(reader)
-	c(err)
+	p(err)
 
-	fmt.Println("MSK initialized successfully.")
+	return nil
+}
 
+func DeletePassword(mk []byte, pName string) error {
+	return nil
+}
+
+func AddPassword(mk []byte, pName, pValue string)  error {
+	file, err := os.Open(MSK_OUTPUT_DATA)
+	p(err)
+	defer file.Close()
+	
+	fileData, err := io.ReadAll(file)
+	p(err)
+
+	csvData := fm.Decrypt(fileData, mk)
+	fmt.Println(string(csvData))
+	
 	return nil
 }

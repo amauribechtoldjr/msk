@@ -24,13 +24,7 @@ First, config your master key, you can use two methods:
 Inserting the master key manually:
 
 ```
-msk config -m "my_manual_designed_masterkey"
-```
-
-OR, you can generate a new randomized master key for you (it will be prompted and you can store it anywhere):
-
-```
-msk config -a
+msk config
 ```
 
 To save a new password:
