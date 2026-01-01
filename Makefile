@@ -11,7 +11,10 @@ config:
 	go run ./cmd/msk/main.go c
 
 set-p:
-	go run ./cmd/msk/main.go p -n "Netflix" -s "password123"
+	go run ./cmd/msk/main.go p -n "HBO" -s "password123"
 
 del-p:
 	go run ./cmd/msk/main.go p -n "Netflix" -d
+
+list:
+	go run ./cmd/msk/main.go p -l
