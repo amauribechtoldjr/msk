@@ -2,18 +2,27 @@ build:
 	go build -o ./bin/ ./cmd/msk/main.go
 
 install: 
-	go install ./cmd/msk
+	go install ./cmd/msk/
 
 run:
-	go run ./cmd/msk/main.go
+	go run ./bin/main.exe
 
 config:
 	go run ./cmd/msk/main.go c
 
-set-p:
+setp:
 	go run ./cmd/msk/main.go p -n "HBO" -s "password123"
 
-del-p:
+getp:
+	go run ./cmd/msk/main.go p -n "HBO" -g
+
+setp1:
+	go run ./cmd/msk/main.go p -n "HBO2" -s "password123"
+
+setp2:
+	go run ./cmd/msk/main.go p -n "HBO3" -s "password123"
+
+delp:
 	go run ./cmd/msk/main.go p -n "Netflix" -d
 
 list:
