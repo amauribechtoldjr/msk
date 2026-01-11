@@ -105,6 +105,25 @@ func (s *Store) GetFile(ctx context.Context, name string) ([]byte, error) {
 	return data, nil
 }
 
+func (s *Store) DeleteFile(ctx context.Context, name string) (bool, error) {
+	select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		default:
+	}
+
+	err := os.Remove(s.secretPath(name))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, ErrNotFound
+		}
+
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (s *Store) FileExists(ctx context.Context, name string) (bool, error) {
 	select {
 		case <-ctx.Done():

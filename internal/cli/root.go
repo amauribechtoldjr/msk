@@ -1,13 +1,8 @@
 package cli
 
 import (
-	"errors"
-	"fmt"
-	"syscall"
-
 	"github.com/amauribechtoldjr/msk/internal/app"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 )
 
 func NewMSKCmd(service app.MSKService) *cobra.Command {
@@ -23,7 +18,7 @@ func NewMSKCmd(service app.MSKService) *cobra.Command {
 			they won't be able to view any stored data without the correct master key.`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			mk, err := ensurePassword()
+			mk, err := PromptPassword("Enter master password:")
 			if err != nil {
 				return err
 			}
@@ -37,27 +32,19 @@ func NewMSKCmd(service app.MSKService) *cobra.Command {
 	cmd.PersistentFlags().StringP("master", "m", "", "Set the master key manually.")
 	cmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
-	passwordCmd := NewPasswordCmd(service)
-	cmd.AddCommand(passwordCmd)
+	addCmd := NewAddCmd(service)
+	cmd.AddCommand(addCmd)
+
+	getCmd := NewGetCmd(service)
+	cmd.AddCommand(getCmd)
+
+	delCmd := NewDeleteCmd(service)
+	cmd.AddCommand(delCmd)
 
 	return cmd
 }
 
 
-func ensurePassword() ([]byte, error) {
-	fmt.Print("Enter master key: ")
-	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
-	fmt.Println()
 
-	if err != nil {
-		return nil, err
-	}
-
-	if len(bytePassword) == 0 {
-		return nil, errors.New("Invalid master key.")
-	}
-
-	return bytePassword, nil
-}
 
 

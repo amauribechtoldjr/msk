@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
@@ -17,8 +16,9 @@ var (
 )
 
 type MSKService interface {
-	AddSecret(ctx context.Context, name, rawS string) error
-	GetSecret(ctx context.Context, name string) error
+	AddSecret(ctx context.Context, name string, password []byte) error
+	GetSecret(ctx context.Context, name string) ([]byte, error)
+	DeleteSecret(ctx context.Context, name string) error
 	ListAll(ctx context.Context) error
 	ConfigMK(ctx context.Context, mk []byte)
 }
@@ -39,11 +39,18 @@ func (s *Service) ConfigMK(ctx context.Context, mk []byte) {
 	s.crypto.ConfigMK(mk) 
 }
 
-func (s *Service) AddSecret(ctx context.Context, name, rawS string) error {
-	if name == "" {
-		return errors.New("secret name cannot be empty")
+
+func (s *Service) DeleteSecret(ctx context.Context, name string) error {
+	_, err := s.repo.DeleteFile(ctx, name)
+
+	if err != nil {
+		return err
 	}
 
+	return nil
+}
+
+func (s *Service) AddSecret(ctx context.Context, name string, rawP []byte) error {
 	exists, err := s.repo.FileExists(ctx, name)
 	if err != nil {
 		return err
@@ -55,11 +62,10 @@ func (s *Service) AddSecret(ctx context.Context, name, rawS string) error {
 
 	secret := domain.Secret{
 		Name: name,
-		Password: []byte(rawS),
+		Password: rawP,
 		CreatedAt: time.Now().UTC(),
 	}
 
-	//TODO: continue refactor from here (save secret from main.go)
 	encryptionResult, err := s.crypto.Encrypt(secret)
 	if err != nil {
 		return err
@@ -68,33 +74,31 @@ func (s *Service) AddSecret(ctx context.Context, name, rawS string) error {
 	return s.repo.SaveFile(ctx, encryptionResult, name)
 }
 
-func (s *Service) GetSecret(ctx context.Context, name string) error {
+func (s *Service) GetSecret(ctx context.Context, name string) ([]byte, error) {
 	if name == "" {
-		return errors.New("secret name cannot be empty")
+		return nil, errors.New("secret name cannot be empty")
 	}
 
 	exists, err := s.repo.FileExists(ctx, name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !exists {
-		return ErrSecretNotFound
+		return nil, ErrSecretNotFound
 	}
 
 	fileData, err := s.repo.GetFile(ctx, name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	secretData, err := s.crypto.Decrypt(fileData)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	fmt.Println(string(secretData.Password))
-
-	return nil
+	return secretData.Password, nil
 }
 
 func (s *Service) ListAll(ctx context.Context) error {

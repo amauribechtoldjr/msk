@@ -11,8 +11,6 @@ import (
 
 var ErrEncrypt = errors.New("failed to encrypt file")
 
-
-
 func (a *ArgonCrypt) Encrypt(secret domain.Secret) (domain.EncryptedSecret, error) {
 	salt, err := randomBytes(MSK_SALT_SIZE)
 	if err != nil {

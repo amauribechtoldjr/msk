@@ -9,5 +9,6 @@ import (
 type Repository interface {
 	SaveFile(ctx context.Context, encryption domain.EncryptedSecret, name string) error
 	GetFile(ctx context.Context, name string) ([]byte, error)
+	DeleteFile(ctx context.Context, name string) (bool, error)
 	FileExists(ctx context.Context, name string) (bool, error)
 }

@@ -15,26 +15,31 @@ As long as your master password remains secret, your data stays protected. 🚀
 
 - Download
 - Build
-- Add to your envinronment variables
+- Add to your environment variables
 
 ## Getting Started
-
-First, config your master key, you can use two methods:
-
-Inserting the master key manually:
-
-```
-msk config
-```
 
 To save a new password:
 
 ```
-msk -p "mynewpassoword" -mk "my-master-key" -n "Name of my password"
+msk add github -p "my-password"
 ```
 
-To get a new password:
+To get the password:
 
 ```
-msk -l "Name of my passoword" -mk "my-master-key"
+msk get github
 ```
+
+To delete passwords:
+
+```
+msk del github
+```
+
+TODO:
+
+1 - Add config command to store a file with a single data, that i need to always be able to decrypt first with the master key, and then I can do anything else
+.Add this rule for add/get/del/upd
+
+2 - Add second master key prompt confirmation to update/delete commands

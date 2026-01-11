@@ -1,7 +1,10 @@
 package file
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"strings"
+)
 
 func (s *Store) secretPath(name string) string {
-	return filepath.Join(s.dir, name+".msk")
+	return filepath.Join(s.dir, strings.ToLower(name)+".msk")
 }

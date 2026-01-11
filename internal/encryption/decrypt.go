@@ -11,7 +11,6 @@ import (
 
 var ErrDecrypt = errors.New("failed to decrypt file")
 
-
 func cleanupByte(b []byte) {
 	for i := range b {
 		b[i] = 0
