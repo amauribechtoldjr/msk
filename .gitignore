@@ -5,3 +5,6 @@ bin/*
 
 vault
 vault/*
+
+improvements/*
+IMPROVEMENTS.md

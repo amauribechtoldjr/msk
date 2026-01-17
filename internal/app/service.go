@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	ErrSecretExists = errors.New("secret already exists")
+	ErrSecretExists   = errors.New("secret already exists")
 	ErrSecretNotFound = errors.New("secret not found")
 )
 
@@ -24,21 +24,20 @@ type MSKService interface {
 }
 
 type Service struct {
-	repo storage.Repository
+	repo   storage.Repository
 	crypto encryption.Encryption
 }
 
 func NewMSKService(r storage.Repository, c encryption.Encryption) *Service {
 	return &Service{
 		crypto: c,
-		repo: r,
+		repo:   r,
 	}
 }
 
 func (s *Service) ConfigMK(ctx context.Context, mk []byte) {
-	s.crypto.ConfigMK(mk) 
+	s.crypto.ConfigMK(mk)
 }
-
 
 func (s *Service) DeleteSecret(ctx context.Context, name string) error {
 	_, err := s.repo.DeleteFile(ctx, name)
@@ -61,8 +60,8 @@ func (s *Service) AddSecret(ctx context.Context, name string, rawP []byte) error
 	}
 
 	secret := domain.Secret{
-		Name: name,
-		Password: rawP,
+		Name:      name,
+		Password:  rawP,
 		CreatedAt: time.Now().UTC(),
 	}
 
