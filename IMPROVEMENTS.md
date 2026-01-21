@@ -6,6 +6,7 @@ Each improvement group has been separated into its own file in the `improvements
 
 ## Quick Navigation
 
+- **[Architecture Improvements](improvements/00-architecture-improvements.md)** 🔴 **START HERE** - Security-first architecture before implementing memory clearing
 - **[Recommended Learning Order](improvements/00-index.md)** - Suggested approach for implementing improvements
 - **[Key Principles](improvements/principles.md)** - Security principles and Go design patterns
 - **[Testing Guide](improvements/testing.md)** - How to test your improvements
@@ -13,7 +14,12 @@ Each improvement group has been separated into its own file in the `improvements
 
 ## Improvement Groups
 
-1. **[Group 1: Critical Security - Memory Safety](improvements/01-memory-safety.md)** 🔴 **CRITICAL**
+0. **[Architecture Improvements - Security-First Design](improvements/00-architecture-improvements.md)** 🔴 **CRITICAL** - Do this first!
+   - No ownership model for sensitive data
+   - Master key stored as plain byte slice
+   - No lifecycle management for secure buffers
+
+1. **[Group 1: Critical Security - Memory Safety](improvements/01-memory-safety.md)** 🔴 **CRITICAL** ⚠️ Requires architecture improvements first
    - Master key never cleared from memory
    - Passwords stored in memory but not cleared after use
    - Derived encryption keys not cleared after encryption

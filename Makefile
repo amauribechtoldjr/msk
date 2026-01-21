@@ -11,7 +11,7 @@ config:
 	go run ./cmd/msk/main.go c
 
 setp:
-	go run ./cmd/msk/main.go p -n "HBO" -s "password123"
+	go run ./cmd/msk/main.go add teste123
 
 getp:
 	go run ./cmd/msk/main.go p -n "HBO" -g

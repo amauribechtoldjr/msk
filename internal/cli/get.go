@@ -2,6 +2,7 @@ package cli
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/amauribechtoldjr/msk/internal/app"
 	clip "github.com/amauribechtoldjr/msk/internal/clip"
@@ -24,15 +25,15 @@ func NewGetCmd(service app.MSKService) *cobra.Command {
 
 			ctx := cmd.Context()
 			name := args[0]
-	
+
 			password, err := service.GetSecret(ctx, name)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to get password: %w", err)
 			}
 
 			err = clip.CopyText(password)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to copy password to your clipboard: %w", err)
 			}
 
 			logger.PrintSuccess("Password copied to clipboard (press Ctrl+V to paste)")
@@ -42,3 +43,4 @@ func NewGetCmd(service app.MSKService) *cobra.Command {
 
 	return getCmd
 }
+

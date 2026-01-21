@@ -2,6 +2,7 @@ package cli
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/amauribechtoldjr/msk/internal/app"
 	"github.com/amauribechtoldjr/msk/internal/logger"
@@ -24,7 +25,11 @@ func NewAddCmd(service app.MSKService) *cobra.Command {
 			ctx := cmd.Context()
 			name := args[0]
 
-			value, _ := cmd.Flags().GetString("password")
+			value, err := cmd.Flags().GetString("password")
+			if err != nil {
+				return fmt.Errorf("failed to retrieve password value: %w", err)
+			}
+
 			password := []byte(value)
 
 			if value == "" {
@@ -34,13 +39,13 @@ func NewAddCmd(service app.MSKService) *cobra.Command {
 					return err
 				}
 			}
-	
-			err := service.AddSecret(ctx, name, password)
+
+			err = service.AddSecret(ctx, name, password)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to add secret: %w", err)
 			}
 
-			logger.PrintSuccess("Password added successfully")
+			logger.PrintSuccess("Password added successfully\n")
 			return nil
 		},
 	}
