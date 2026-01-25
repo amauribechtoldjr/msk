@@ -9,7 +9,9 @@ import (
 	"github.com/amauribechtoldjr/msk/internal/domain"
 )
 
-var ErrDecrypt = errors.New("failed to decrypt file")
+var ErrDecryption = errors.New("decryption failed")
+var ErrCorruptedFile = errors.New("corrupted file")
+var ErrUnsupportedFileVersion = errors.New("unsupported file version")
 
 func cleanupByte(b []byte) {
 	for i := range b {
@@ -19,15 +21,15 @@ func cleanupByte(b []byte) {
 
 func (a *ArgonCrypt) Decrypt(cipherData []byte) (domain.Secret, error) {
 	if len(cipherData) < MSK_HEADER_SIZE {
-		return domain.Secret{}, errors.New("invalid or corrupted file")
+		return domain.Secret{}, ErrCorruptedFile
 	}
 
 	if string(cipherData[:MSK_MAGIC_SIZE]) != MSK_MAGIC_VALUE {
-		return domain.Secret{}, errors.New("invalid file format")
+		return domain.Secret{}, ErrCorruptedFile
 	}
 
 	if cipherData[MSK_MAGIC_SIZE] != MSK_FILE_VERSION {
-		return domain.Secret{}, errors.New("unsupported file version")
+		return domain.Secret{}, ErrUnsupportedFileVersion
 	}
 
 	offset := MSK_MAGIC_SIZE + MSK_VERSION_SIZE
@@ -40,11 +42,9 @@ func (a *ArgonCrypt) Decrypt(cipherData []byte) (domain.Secret, error) {
 
 	cipherText := cipherData[offset:]
 
-	// ---- Key derivation ----
 	key := getArgonDeriveKey(a.mk, salt)
 	defer cleanupByte(key)
 
-	// ---- Decryption ----
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return domain.Secret{}, err
@@ -57,11 +57,10 @@ func (a *ArgonCrypt) Decrypt(cipherData []byte) (domain.Secret, error) {
 
 	plaintext, err := gcm.Open(nil, nonce, cipherText, nil)
 	if err != nil {
-		return domain.Secret{}, errors.New("authentication failed")
+		return domain.Secret{}, ErrDecryption
 	}
 	defer cleanupByte(plaintext)
 
-	// ---- Decode ----
 	var s domain.Secret
 	if err := json.Unmarshal(plaintext, &s); err != nil {
 		return domain.Secret{}, err

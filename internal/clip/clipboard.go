@@ -13,7 +13,7 @@ var (
 func Init() error {
 	err := clipboard.Init()
 	if err != nil {
-			return ErrClipboardInit
+		return ErrClipboardInit
 	}
 	return nil
 }
@@ -22,3 +22,4 @@ func CopyText(text []byte) error {
 	_ = clipboard.Write(clipboard.FmtText, text)
 	return nil
 }
+

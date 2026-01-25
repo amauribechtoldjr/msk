@@ -2,79 +2,93 @@
 
 This guide organizes improvements so you build a solid foundation first, leaving memory safety (the most complex topic) for last.
 
-## Phase 1: Foundation & Reliability (Do First!)
+---
 
-1. **[Error Handling](03-error-handling.md)** 🔴 **START HERE**
-   - Fix ignored errors in main.go and add.go
-   - Ensures the app fails gracefully
+## Current Progress
 
-2. **[Input Validation](04-input-validation.md)** 🔴 **CRITICAL**
+| Phase | Items Done | Items Remaining |
+|-------|------------|-----------------|
+| Phase 1 | 1/3 | Input validation, List feature |
+| Phase 2 | 2/3 | Cleanup hooks |
+| Phase 3 | 2/2 | ✅ Complete |
+| Phase 4 | 0/3 | Config, deps, CLI cleanup |
+| Phase 5 | 0.5/1 | Memory safety (partial) |
+
+---
+
+## Phase 1: Foundation & Reliability
+
+1. **[Error Handling](03-error-handling.md)** ✅ **DONE**
+   - ~~Fix ignored errors in main.go and add.go~~
+   - ~~Ensures the app fails gracefully~~
+
+2. **[Input Validation](04-input-validation.md)** 🔴 **TODO - HIGH PRIORITY**
    - Prevent path traversal attacks
    - Add length limits and character restrictions
 
-3. **[Missing Features](11-missing-features.md)** 🟡 **USEFUL**
-   - Implement ListAll() functionality
+3. **[Missing Features](11-missing-features.md)** 🔴 **TODO**
+   - Implement ListAll() functionality (currently returns nil)
+   - Add list CLI command
    - Complete core features
 
 ## Phase 2: Architecture & Code Quality
 
-4. **[Architecture Improvements](00-architecture-improvements.md)** 🟡 **IMPORTANT**
-   - Clean architecture principles
-   - Layer responsibilities and separation of concerns
-   - Interface design patterns
+4. **[Architecture Improvements](00-architecture-improvements.md)** ⚠️ **PARTIAL**
+   - ✅ Clean architecture principles applied
+   - ✅ Layer responsibilities and separation of concerns
+   - ❌ Need cleanup hooks (PersistentPostRun)
 
-5. **[Service Layer Design](06-service-layer-design.md)** 🟡 **MEDIUM**
-   - Improve interface design
-   - Ensure proper separation of concerns
+5. **[Service Layer Design](06-service-layer-design.md)** ✅ **DONE**
+   - ~~Improve interface design~~
+   - ~~Ensure proper separation of concerns~~
 
-6. **[Context Usage](05-context-usage.md)** 🟡 **MEDIUM**
-   - Add cancellation support for long-running operations
+6. **[Context Usage](05-context-usage.md)** ✅ **DONE**
+   - ~~Context properly checked in storage layer~~
 
 ## Phase 3: Security Improvements (Non-Memory)
 
-7. **[Argon2 Configuration](02-argon2-configuration.md)** 🟠 **HIGH**
-   - Fix weak Argon2 parameters (64KB → 64MB)
-   - Critical security vulnerability
+7. **[Argon2 Configuration](02-argon2-configuration.md)** ✅ **DONE**
+   - ~~Fix weak Argon2 parameters (64KB → 64MB)~~
+   - Memory now at 64*1024 (64MB)
 
-8. **[Storage Security](07-storage-security.md)** 🟡 **MEDIUM**
-   - Add file locking for concurrent access
-   - Improve atomic write guarantees
+8. **[Storage Security](07-storage-security.md)** ✅ **DONE**
+   - ~~Atomic writes with temp file + rename~~
+   - ~~Directory sync for durability~~
 
 ## Phase 4: Configuration & Polish
 
-9. **[Configuration System](10-configuration.md)** 🟡 **MEDIUM**
+9. **[Configuration System](10-configuration.md)** 🟡 **OPTIONAL**
    - Make vault path configurable
-   - Externalize Argon2 parameters
+   - Consider if really needed for a simple CLI tool
 
-10. **[Dependency Management](08-dependency-management.md)** 🟢 **LOW**
-    - Fix go.mod issues
-    - Quick fix
+10. **[Dependency Management](08-dependency-management.md)** 🟡 **REVIEW**
+    - Check go.mod Go version (1.25.5)
 
-11. **[Cobra CLI Improvements](09-cobra-cli-practices.md)** 🟢 **LOW**
-    - Remove unused flags
-    - Improve documentation
+11. **[Cobra CLI Improvements](09-cobra-cli-practices.md)** 🟡 **TODO**
+    - Remove unused flags (--toggle, --master)
+    - Add list command
 
 ## Phase 5: Memory Safety (Do Last!)
 
-12. **[Memory Safety](01-memory-safety.md)** 🔴 **COMPLEX** - Save for last!
-    - SecureBuffer implementation
-    - Platform-specific memory locking (mlock/VirtualLock)
-    - Secure memory zeroing
-    - Clearing passwords and keys from memory
+12. **[Memory Safety](01-memory-safety.md)** ⚠️ **PARTIAL**
+    - ✅ cleanupByte() function exists
+    - ✅ Derived key cleared in decrypt.go
+    - ✅ Plaintext cleared in decrypt.go
+    - ❌ encrypt.go does not clear derived key
+    - ❌ Master key never cleared
+    - ❌ No SecureBuffer implementation
+    - ❌ No memory locking
 
 ---
 
-## Why This Order?
+## Next Steps (Priority Order)
 
-1. **Foundation First**: Error handling and input validation ensure the app works reliably
-2. **Architecture Second**: Clean architecture makes future changes easier
-3. **Security Third**: Fix obvious security issues (Argon2) that are straightforward
-4. **Polish Fourth**: Configuration and cleanup improve user experience
-5. **Memory Safety Last**: Most complex topic, requires understanding of:
-   - Go memory model
-   - Platform-specific system calls
-   - Compiler optimizations
-   - Ownership and lifecycle management
+1. **Input Validation** (04-input-validation.md) - Security critical
+2. **List Feature** (11-missing-features.md) - Complete core functionality
+3. **Remove unused CLI flags** (09-cobra-cli-practices.md) - Quick win
+4. **Add cleanup to encrypt.go** - Match what decrypt.go does
+
+---
 
 ## Execution Plan
 

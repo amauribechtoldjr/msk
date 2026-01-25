@@ -74,10 +74,6 @@ func (s *Service) AddSecret(ctx context.Context, name string, rawP []byte) error
 }
 
 func (s *Service) GetSecret(ctx context.Context, name string) ([]byte, error) {
-	if name == "" {
-		return nil, errors.New("secret name cannot be empty")
-	}
-
 	exists, err := s.repo.FileExists(ctx, name)
 	if err != nil {
 		return nil, err
