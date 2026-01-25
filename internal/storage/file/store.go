@@ -3,6 +3,7 @@ package file
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -25,9 +26,9 @@ func NewStore(dir string) (*Store, error) {
 
 func (s *Store) SaveFile(ctx context.Context, encryption domain.EncryptedSecret, name string) error {
 	select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
 	}
 
 	path := s.secretPath(name)
@@ -88,9 +89,9 @@ func (s *Store) SaveFile(ctx context.Context, encryption domain.EncryptedSecret,
 
 func (s *Store) GetFile(ctx context.Context, name string) ([]byte, error) {
 	select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
 	}
 
 	data, err := os.ReadFile(s.secretPath(name))
@@ -107,9 +108,9 @@ func (s *Store) GetFile(ctx context.Context, name string) ([]byte, error) {
 
 func (s *Store) DeleteFile(ctx context.Context, name string) (bool, error) {
 	select {
-		case <-ctx.Done():
-			return false, ctx.Err()
-		default:
+	case <-ctx.Done():
+		return false, ctx.Err()
+	default:
 	}
 
 	err := os.Remove(s.secretPath(name))
@@ -126,9 +127,9 @@ func (s *Store) DeleteFile(ctx context.Context, name string) (bool, error) {
 
 func (s *Store) FileExists(ctx context.Context, name string) (bool, error) {
 	select {
-		case <-ctx.Done():
-			return false, ctx.Err()
-		default:
+	case <-ctx.Done():
+		return false, ctx.Err()
+	default:
 	}
 
 	_, err := os.Stat(s.secretPath(name))
@@ -140,4 +141,24 @@ func (s *Store) FileExists(ctx context.Context, name string) (bool, error) {
 	}
 
 	return false, err
+}
+
+func (s *Store) GetFiles(ctx context.Context) ([]string, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+	fmt.Print(s.dir + "\n")
+	teste, err := os.ReadDir(s.dir)
+	if err == nil {
+		return nil, nil
+	}
+	fmt.Printf("read dir -> %s", teste)
+
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+
+	return nil, err
 }

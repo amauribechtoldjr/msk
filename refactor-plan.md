@@ -1,0 +1,3 @@
+- add inputs validations (no special chars)
+- add list-all commands
+- improve getArgonDeriveKey to amplify security

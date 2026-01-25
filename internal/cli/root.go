@@ -41,10 +41,8 @@ func NewMSKCmd(service app.MSKService) *cobra.Command {
 	delCmd := NewDeleteCmd(service)
 	cmd.AddCommand(delCmd)
 
+	listCmd := NewListCmd(service)
+	cmd.AddCommand(listCmd)
+
 	return cmd
 }
-
-
-
-
-

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
@@ -19,7 +20,7 @@ type MSKService interface {
 	AddSecret(ctx context.Context, name string, password []byte) error
 	GetSecret(ctx context.Context, name string) ([]byte, error)
 	DeleteSecret(ctx context.Context, name string) error
-	ListAll(ctx context.Context) error
+	ListSecrets(ctx context.Context) ([]string, error)
 	ConfigMK(ctx context.Context, mk []byte)
 }
 
@@ -96,6 +97,11 @@ func (s *Service) GetSecret(ctx context.Context, name string) ([]byte, error) {
 	return secretData.Password, nil
 }
 
-func (s *Service) ListAll(ctx context.Context) error {
-	return nil
+func (s *Service) ListSecrets(ctx context.Context) ([]string, error) {
+	files, err := s.repo.GetFiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("files %s", files)
+	return files, nil
 }
