@@ -28,7 +28,7 @@ func NewAddCmd(service app.MSKService) *cobra.Command {
 
 			err := validator.Validate(name)
 			if err != nil {
-				return errors.New("invalid password name")
+				return fmt.Errorf("invalid password name: %w", err)
 			}
 
 			value, err := cmd.Flags().GetString("password")

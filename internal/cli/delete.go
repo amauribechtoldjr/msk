@@ -2,9 +2,11 @@ package cli
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/amauribechtoldjr/msk/internal/app"
 	"github.com/amauribechtoldjr/msk/internal/logger"
+	"github.com/amauribechtoldjr/msk/internal/validator"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +25,11 @@ func NewDeleteCmd(service app.MSKService) *cobra.Command {
 
 			ctx := cmd.Context()
 			name := args[0]
-	
+
+			if err := validator.Validate(name); err != nil {
+				return fmt.Errorf("invalid password name: %w", err)
+			}
+
 			err := service.DeleteSecret(ctx, name)
 			if err != nil {
 				return err
