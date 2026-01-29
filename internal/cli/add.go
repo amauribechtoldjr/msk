@@ -6,6 +6,7 @@ import (
 
 	"github.com/amauribechtoldjr/msk/internal/app"
 	"github.com/amauribechtoldjr/msk/internal/logger"
+	"github.com/amauribechtoldjr/msk/internal/validator"
 	"github.com/spf13/cobra"
 )
 
@@ -24,6 +25,11 @@ func NewAddCmd(service app.MSKService) *cobra.Command {
 
 			ctx := cmd.Context()
 			name := args[0]
+
+			err := validator.Validate(name)
+			if err != nil {
+				return errors.New("invalid password name")
+			}
 
 			value, err := cmd.Flags().GetString("password")
 			if err != nil {
