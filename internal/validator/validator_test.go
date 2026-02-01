@@ -1,159 +1,124 @@
 package validator
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 )
 
 type TestCase struct {
 	name    string
-	input   string
+	input   []string
 	wantErr error
 }
 
-func runTestCases(t *testing.T, tests []TestCase) {
+func runTestCases(t *testing.T, tests []TestCase, validateFn func(string) error) {
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := ValidateName(tt.input)
+		for _, input := range tt.input {
+			t.Run(tt.name, func(t *testing.T) {
+				result := validateFn(input)
 
-			if result != tt.wantErr {
-				t.Logf("Test failed: %v", tt.name)
-				t.Logf("ValidateName() = %v", result)
-				t.Errorf("Expects: %v", tt.wantErr)
-			}
-		})
+				if result != tt.wantErr {
+					t.Logf("Test failed: %v", tt.name)
+					t.Logf("ValidateName('%s') = %v", input, result)
+					t.Errorf("Expects: %v", tt.wantErr)
+				}
+			})
+		}
 	}
 }
 
-func TestValidate(t *testing.T) {
+func TestValidateName(t *testing.T) {
 	tests := []TestCase{
 		{
-			name: "should return error for empty name",
-			input: "",
+			name:    "should return error for empty name",
+			input:   []string{""},
 			wantErr: ErrEmptyName,
 		},
 		{
-			name: "should return error for too long name",
-			input: strings.Repeat("T", 256),
+			name:    "should return error for too long name",
+			input:   []string{strings.Repeat("T", 256)},
 			wantErr: ErrNameTooLong,
 		},
 		{
 			name: "should return error for name with null character",
-			input: "test\x00name",
+			input: []string{
+				"test\x00name",
+				"test\x1Fname",
+				"test\x7Fname",
+				"my\tpassword",
+				"my\npassword",
+				"my\rpassword",
+			},
 			wantErr: ErrControlCharacter,
 		},
 		{
-			name: "should return error for name with unit separator",
-			input: "test\x1Fname",
-			wantErr: ErrControlCharacter,
-		},
-		{
-			name: "should return error for name with DEL character",
-			input: "test\x7Fname",
-			wantErr: ErrControlCharacter,
-		},
-		{
-			name: "should return error for name with space",
-			input: "my password",
+			name:    "should return error for name with space",
+			input:   []string{"my password"},
 			wantErr: ErrWhitespace,
 		},
 		{
-			name: "should return error for name with tab",
-			input: "my\tpassword",
-			wantErr: ErrControlCharacter,	
-		},
-		{
-			name: "should return error for name with newline",
-			input: "my\npassword",
-			wantErr: ErrControlCharacter,
-		},
-		{
-			name: "should return error for name with carriage return",
-			input: "my\rpassword",
-			wantErr: ErrControlCharacter,
-		},
-		{
-			name: "should return error for name with path separator (forward slash)",
-			input: "path/to/secret",
+			name: "should return error for name with path separators",
+			input: []string{
+				"path/to/secret",
+				"path\\to\\secret",
+				"trailing/",
+				"/leading",
+			},
 			wantErr: ErrPathSeparator,
 		},
 		{
-			name: "should return error for name with path separator (backslash)",
-			input: "path\\to\\secret",
-			wantErr: ErrPathSeparator,
-		},
-		{
-			name: "should return error for name with path separator (trailing slash)",
-			input: "trailing/",
-			wantErr: ErrPathSeparator,
-		},
-		{
-			name: "should return error for name with path separator (leading slash)",
-			input: "/leading",
-			wantErr: ErrPathSeparator,
-		},
-		{
-			name: "should return error for name with invalid characters (dot only)",
-			input: ".",
+			name: "should return error for name with invalid characters",
+			input: []string{
+				".",
+				"..",
+				"some.thing",
+				"some..thing",
+				".name",
+				"name.",
+				"pass@word",
+				"key#value",
+				"data!info",
+				"test$case",
+				"name%test",
+			},
 			wantErr: ErrInvalidCharacters,
 		},
 		{
-			name: "should return error for name with invalid characters (double dot only)",
-			input: "..",
-			wantErr: ErrInvalidCharacters,
-		},
-		{
-			name: "should return error for name with invalid characters (string with single dots)",
-			input: "some.thing",
-			wantErr: ErrInvalidCharacters,
-		},
-		{
-			name: "should return error for name with invalid characters (string with double dots)",
-			input: "some..thing",
-			wantErr: ErrInvalidCharacters,
-		},
-		{
-			name: "should return error for name with invalid characters (leading dot)",
-			input: ".name",
-			wantErr: ErrInvalidCharacters,
-		},
-		{
-			name: "should return error for name with invalid characters (trailing dot)",
-			input: "name.",
-			wantErr: ErrInvalidCharacters,
+			name: "should not return error with valid names",
+			input: []string{
+				"pass-word",
+				"mypassw0r3",
+				"som3p4ssword_123",
+				"VALID_NAME",
+				"anotherValidName123",
+			},
+			wantErr: nil,
 		},
 	}
 
-	runTestCases(t, tests)
+	runTestCases(t, tests, ValidateName)
 }
-// VALID names (should return nil):
-//   - "my-password"
-//   - "MyPassword123"
-//   - "secret_key"
-//   - "API-KEY-2024"
-//   - "a"
-//   - "A1_b2-C3"
-//   - "ALLCAPS"
-//   - "lowercase"
-//   - "with-hyphen"
-//   - "with_underscore"
 
-// ErrInvalidCharacters:
-//   - "my@password"      (@ symbol)
-//   - "pass#word"        (hash)
-//   - "secret!"          (exclamation)
-//   - "test$var"         (dollar sign)
-//   - "name%value"       (percent)
-//   - "key=value"        (equals)
-//   - "hello+world"      (plus)
-//   - "file.txt"         (dot in middle - also caught by dot rules)
-//   - "日本語"            (unicode characters)
-//
-// ErrReservedName (Windows reserved - only for windows Users):
-//   - "CON"
-//   - "con"              (case insensitive)
-//   - "PRN"
-//   - "AUX"
-//   - "NUL"
-//   - "COM1" through "COM9"
-//   - "LPT1" through "LPT9"
+func TestValidateWindowsReservedName(t *testing.T) {
+
+	if runtime.GOOS == "windows" {
+		tests := []TestCase{
+			{
+				name: "should return error for Windows reserved names",
+				input: []string{
+					"con",
+					"prn",
+					"aux",
+					"nul",
+					"com1",
+					"com2",
+					"lpt1",
+				},
+				wantErr: ErrReservedName,
+			},
+		}
+
+		runTestCases(t, tests, ValidateWindowsReservedName)
+	}
+}

@@ -1,11 +1,15 @@
 build:
 	go build -o ./bin/ ./cmd/msk/main.go
 
+run-build:
+	go run ./bin/main.exe
+
+run:
+	go run ./cmd/msk/main.go
+
 install: 
 	go install ./cmd/msk/
 
-run:
-	go run ./bin/main.exe
 
 test:
 	go test ./...
