@@ -1,13 +1,17 @@
-package file
+package storage
 
-import "testing"
+import (
+	"path/filepath"
+	"testing"
+)
 
-// TODO: add tests for different OS path separators (or do them differently).
-// Current tests assume Windows-style separators.
+// add tests for:
+// wrong path separators on different OS
+// case insensitivity
 
 func TestSecretPath(t *testing.T) {
 	store := &Store{dir: "/secrets"}
-	expected := "\\secrets\\mysecret.msk"
+	expected := filepath.ToSlash("\\secrets\\mysecret.msk")
 
 	t.Run("should return correct secret path", func(t *testing.T) {
 		result := store.secretPath("mysecret")
@@ -20,7 +24,7 @@ func TestSecretPath(t *testing.T) {
 
 func TestSecretPathLowerCase(t *testing.T) {
 	store := &Store{dir: "/secrets"}
-	expected := "\\secrets\\mysecret.msk"
+	expected := filepath.ToSlash("\\secrets\\mysecret.msk")
 
 	t.Run("should return correct secret path", func(t *testing.T) {
 		result := store.secretPath("MYSECRET")

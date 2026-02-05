@@ -1,9 +1,7 @@
 package app
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
@@ -16,32 +14,24 @@ var (
 	ErrSecretNotFound = errors.New("secret not found")
 )
 
-type MSKService interface {
-	AddSecret(ctx context.Context, name string, password []byte) error
-	GetSecret(ctx context.Context, name string) ([]byte, error)
-	DeleteSecret(ctx context.Context, name string) error
-	ListSecrets(ctx context.Context) ([]string, error)
-	ConfigMK(ctx context.Context, mk []byte)
-}
-
-type Service struct {
-	repo   storage.Repository
+type MSKService struct {
+	repo   storage.Store
 	crypto encryption.Encryption
 }
 
-func NewMSKService(r storage.Repository, c encryption.Encryption) *Service {
-	return &Service{
+func NewMSKService(r storage.Store, c encryption.Encryption) *MSKService {
+	return &MSKService{
 		crypto: c,
 		repo:   r,
 	}
 }
 
-func (s *Service) ConfigMK(ctx context.Context, mk []byte) {
+func (s *MSKService) ConfigMK(mk []byte) {
 	s.crypto.ConfigMK(mk)
 }
 
-func (s *Service) DeleteSecret(ctx context.Context, name string) error {
-	_, err := s.repo.DeleteFile(ctx, name)
+func (s *MSKService) DeleteSecret(name string) error {
+	_, err := s.repo.DeleteFile(name)
 
 	if err != nil {
 		return err
@@ -50,13 +40,8 @@ func (s *Service) DeleteSecret(ctx context.Context, name string) error {
 	return nil
 }
 
-func (s *Service) AddSecret(ctx context.Context, name string, rawP []byte) error {
-	exists, err := s.repo.FileExists(ctx, name)
-	if err != nil {
-		return err
-	}
-
-	if exists {
+func (s *MSKService) AddSecret(name string, rawP []byte) error {
+	if s.repo.FileExists(name) {
 		return ErrSecretExists
 	}
 
@@ -71,20 +56,15 @@ func (s *Service) AddSecret(ctx context.Context, name string, rawP []byte) error
 		return err
 	}
 
-	return s.repo.SaveFile(ctx, encryptionResult, name)
+	return s.repo.SaveFile(encryptionResult, name)
 }
 
-func (s *Service) GetSecret(ctx context.Context, name string) ([]byte, error) {
-	exists, err := s.repo.FileExists(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-
-	if !exists {
+func (s *MSKService) GetSecret(name string) ([]byte, error) {
+	if !s.repo.FileExists(name) {
 		return nil, ErrSecretNotFound
 	}
 
-	fileData, err := s.repo.GetFile(ctx, name)
+	fileData, err := s.repo.GetFile(name)
 	if err != nil {
 		return nil, err
 	}
@@ -97,11 +77,11 @@ func (s *Service) GetSecret(ctx context.Context, name string) ([]byte, error) {
 	return secretData.Password, nil
 }
 
-func (s *Service) ListSecrets(ctx context.Context) ([]string, error) {
-	files, err := s.repo.GetFiles(ctx)
+func (s *MSKService) ListSecrets() ([]string, error) {
+	files, err := s.repo.GetFiles()
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("files %s", files)
+
 	return files, nil
 }

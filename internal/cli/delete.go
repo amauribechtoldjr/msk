@@ -23,14 +23,13 @@ func NewDeleteCmd(service app.MSKService) *cobra.Command {
 				return errors.New("password name is required")
 			}
 
-			ctx := cmd.Context()
 			name := args[0]
 
 			if err := validator.Validate(name); err != nil {
 				return fmt.Errorf("invalid password name: %w", err)
 			}
 
-			err := service.DeleteSecret(ctx, name)
+			err := service.DeleteSecret(name)
 			if err != nil {
 				return err
 			}

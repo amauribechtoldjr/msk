@@ -23,7 +23,6 @@ func NewAddCmd(service app.MSKService) *cobra.Command {
 				return errors.New("password name is required")
 			}
 
-			ctx := cmd.Context()
 			name := args[0]
 
 			err := validator.Validate(name)
@@ -46,7 +45,7 @@ func NewAddCmd(service app.MSKService) *cobra.Command {
 				}
 			}
 
-			err = service.AddSecret(ctx, name, password)
+			err = service.AddSecret(name, password)
 			if err != nil {
 				return fmt.Errorf("failed to add secret: %w", err)
 			}

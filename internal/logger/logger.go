@@ -20,9 +20,6 @@ func RenderError(err error) {
 		printError("%s: Failed to retrieve password\n", defaultErrorMessage)
 	}
 }
-func printError(format string, a ...any) {
-	color.New(color.FgRed).Fprintf(os.Stderr, format, a...)
-}
 
 func PrintInfo(message string) {
 	color.New(color.BgHiBlue).Print(message)
@@ -32,3 +29,6 @@ func PrintSuccess(message string) {
 	color.New(color.FgGreen).Print(message)
 }
 
+func printError(format string, a ...any) {
+	color.New(color.FgRed).Fprintf(os.Stderr, format, a...)
+}

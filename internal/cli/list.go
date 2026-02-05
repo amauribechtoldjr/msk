@@ -2,11 +2,17 @@ package cli
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/amauribechtoldjr/msk/internal/app"
-	"github.com/amauribechtoldjr/msk/internal/logger"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
+
+type Secret struct {
+	ID   int
+	Name string
+}
 
 func NewListCmd(service app.MSKService) *cobra.Command {
 	listCmd := &cobra.Command{
@@ -17,14 +23,30 @@ func NewListCmd(service app.MSKService) *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-
-			_, err := service.ListSecrets(ctx)
+			secretNames, err := service.ListSecrets()
 			if err != nil {
 				return fmt.Errorf("failed to get password: %w", err)
 			}
 
-			logger.PrintSuccess("Password copied to clipboard (press Ctrl+V to paste)")
+			var users []Secret
+
+			for i, name := range secretNames {
+				users = append(users, Secret{
+					ID:   i,
+					Name: name,
+				})
+			}
+
+			t := table.NewWriter()
+			t.SetOutputMirror(os.Stdout)
+			t.AppendHeader(table.Row{"ID", "Name"})
+
+			for _, u := range users {
+				t.AppendRow(table.Row{u.ID, u.Name})
+			}
+
+			t.Render()
+
 			return nil
 		},
 	}

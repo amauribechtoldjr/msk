@@ -17,13 +17,12 @@ func NewMSKCmd(service app.MSKService) *cobra.Command {
 			ensuring that even if someone gains access to your machine, 
 			they won't be able to view any stored data without the correct master key.`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
 			mk, err := PromptPassword("Enter master password:")
 			if err != nil {
 				return err
 			}
 
-			service.ConfigMK(ctx, mk)
+			service.ConfigMK(mk)
 
 			return nil
 		},

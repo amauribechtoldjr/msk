@@ -24,14 +24,13 @@ func NewGetCmd(service app.MSKService) *cobra.Command {
 				return errors.New("password name is required")
 			}
 
-			ctx := cmd.Context()
 			name := args[0]
 
 			if err := validator.Validate(name); err != nil {
 				return fmt.Errorf("invalid password name: %w", err)
 			}
 
-			password, err := service.GetSecret(ctx, name)
+			password, err := service.GetSecret(name)
 			if err != nil {
 				return fmt.Errorf("failed to get password: %w", err)
 			}
@@ -48,4 +47,3 @@ func NewGetCmd(service app.MSKService) *cobra.Command {
 
 	return getCmd
 }
-

@@ -1,9 +1,7 @@
-package file
+package storage
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -24,13 +22,7 @@ func NewStore(dir string) (*Store, error) {
 	return &Store{dir: dir}, nil
 }
 
-func (s *Store) SaveFile(ctx context.Context, encryption domain.EncryptedSecret, name string) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-
+func (s *Store) SaveFile(encryption domain.EncryptedSecret, name string) error {
 	path := s.secretPath(name)
 	tmpPath := path + ".tmp"
 
@@ -87,13 +79,7 @@ func (s *Store) SaveFile(ctx context.Context, encryption domain.EncryptedSecret,
 	return nil
 }
 
-func (s *Store) GetFile(ctx context.Context, name string) ([]byte, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-
+func (s *Store) GetFile(name string) ([]byte, error) {
 	data, err := os.ReadFile(s.secretPath(name))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -106,13 +92,7 @@ func (s *Store) GetFile(ctx context.Context, name string) ([]byte, error) {
 	return data, nil
 }
 
-func (s *Store) DeleteFile(ctx context.Context, name string) (bool, error) {
-	select {
-	case <-ctx.Done():
-		return false, ctx.Err()
-	default:
-	}
-
+func (s *Store) DeleteFile(name string) (bool, error) {
 	err := os.Remove(s.secretPath(name))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -125,40 +105,36 @@ func (s *Store) DeleteFile(ctx context.Context, name string) (bool, error) {
 	return true, nil
 }
 
-func (s *Store) FileExists(ctx context.Context, name string) (bool, error) {
-	select {
-	case <-ctx.Done():
-		return false, ctx.Err()
-	default:
-	}
-
+func (s *Store) FileExists(name string) bool {
 	_, err := os.Stat(s.secretPath(name))
 	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
+		return true
 	}
 
-	return false, err
+	return false
 }
 
-func (s *Store) GetFiles(ctx context.Context) ([]string, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-	fmt.Print(s.dir + "\n")
-	teste, err := os.ReadDir(s.dir)
-	if err == nil {
-		return nil, nil
-	}
-	fmt.Printf("read dir -> %s", teste)
+func (s *Store) GetFiles() ([]string, error) {
+	files, err := os.ReadDir(s.dir)
 
-	if os.IsNotExist(err) {
+	if err != nil {
 		return nil, nil
 	}
 
-	return nil, err
+	var names []string
+
+	for _, fName := range files {
+		info, err := fName.Info()
+		if err != nil {
+			return nil, err
+		}
+
+		if info.IsDir() {
+			continue
+		}
+
+		names = append(names, fName.Name())
+	}
+
+	return names, err
 }

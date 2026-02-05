@@ -9,7 +9,7 @@ import (
 	"github.com/amauribechtoldjr/msk/internal/clip"
 	"github.com/amauribechtoldjr/msk/internal/encryption"
 	"github.com/amauribechtoldjr/msk/internal/logger"
-	"github.com/amauribechtoldjr/msk/internal/storage/file"
+	"github.com/amauribechtoldjr/msk/internal/storage"
 )
 
 func main() {
@@ -18,16 +18,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	store, err := file.NewStore("./vault/")
+	store, err := storage.NewStore("./vault/")
 	if err != nil {
 		logger.RenderError(err)
 		os.Exit(1)
 	}
 
 	enc := encryption.NewArgonCrypt()
-	service := app.NewMSKService(store, enc)
+	service := app.NewMSKService(*store, enc)
 
-	rootCmd := cli.NewMSKCmd(service)
+	rootCmd := cli.NewMSKCmd(*service)
 	if err := rootCmd.Execute(); err != nil {
 		logger.RenderError(err)
 		os.Exit(1)
