@@ -10,6 +10,8 @@ run:
 install: 
 	go install ./cmd/msk/
 
-
 test:
 	go test ./...
+
+test-v:
+	go test ./... -v

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -9,12 +10,20 @@ import (
 // wrong path separators on different OS
 // case insensitivity
 
+var FILE_EXT = "msk"
+
 func TestSecretPath(t *testing.T) {
-	store := &Store{dir: "/secrets"}
-	expected := filepath.ToSlash("\\secrets\\mysecret.msk")
+	secretName := "mysecret"
+	store := &Store{dir: t.TempDir()}
+	expected := filepath.ToSlash(
+		filepath.Join(
+			store.dir,
+			strings.Join([]string{secretName, FILE_EXT}, "."),
+		),
+	)
 
 	t.Run("should return correct secret path", func(t *testing.T) {
-		result := store.secretPath("mysecret")
+		result := store.secretPath(secretName)
 
 		if result != expected {
 			t.Errorf("secretPath() = %v; want %v", result, expected)
@@ -23,11 +32,17 @@ func TestSecretPath(t *testing.T) {
 }
 
 func TestSecretPathLowerCase(t *testing.T) {
-	store := &Store{dir: "/secrets"}
-	expected := filepath.ToSlash("\\secrets\\mysecret.msk")
+	secretName := "MYSECRET"
+	store := &Store{dir: t.TempDir()}
+	expected := filepath.ToSlash(
+		filepath.Join(
+			store.dir,
+			strings.Join([]string{strings.ToLower(secretName), FILE_EXT}, "."),
+		),
+	)
 
 	t.Run("should return correct secret path", func(t *testing.T) {
-		result := store.secretPath("MYSECRET")
+		result := store.secretPath(secretName)
 
 		if result != expected {
 			t.Errorf("secretPath() = %v; want %v", result, expected)

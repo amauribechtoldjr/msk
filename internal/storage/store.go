@@ -2,13 +2,16 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
 )
 
 var ErrNotFound = errors.New("secret not found")
+var ErrInvalidSecret = errors.New("secret invalid")
 
 type Store struct {
 	dir string
@@ -36,23 +39,17 @@ func (s *Store) SaveFile(encryption domain.EncryptedSecret, name string) error {
 		os.Remove(tmpPath)
 	}()
 
-	if _, err := tmpFile.Write([]byte("MSK")); err != nil {
-		return err
-	}
+	msk := []byte("MSK")
+	version := []byte{1}
+	content := []byte{}
 
-	if _, err := tmpFile.Write([]byte{1}); err != nil {
-		return err
-	}
+	content = append(content, msk...)
+	content = append(content, version...)
+	content = append(content, encryption.Salt[:]...)
+	content = append(content, encryption.Nonce[:]...)
+	content = append(content, encryption.Data...)
 
-	if _, err := tmpFile.Write(encryption.Salt[:]); err != nil {
-		return err
-	}
-
-	if _, err := tmpFile.Write(encryption.Nonce[:]); err != nil {
-		return err
-	}
-
-	if _, err := tmpFile.Write(encryption.Data); err != nil {
+	if _, err := tmpFile.Write(content); err != nil {
 		return err
 	}
 
@@ -93,12 +90,19 @@ func (s *Store) GetFile(name string) ([]byte, error) {
 }
 
 func (s *Store) DeleteFile(name string) (bool, error) {
-	err := os.Remove(s.secretPath(name))
+	secretPath := s.secretPath(name)
+	fmt.Printf("secretPath: %v \n", secretPath)
+	info, err := os.Stat(secretPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return false, ErrNotFound
-		}
+		return false, ErrNotFound
+	}
 
+	if info.IsDir() {
+		return false, ErrInvalidSecret
+	}
+
+	err = os.Remove(secretPath)
+	if err != nil {
 		return false, err
 	}
 
@@ -123,8 +127,8 @@ func (s *Store) GetFiles() ([]string, error) {
 
 	var names []string
 
-	for _, fName := range files {
-		info, err := fName.Info()
+	for _, file := range files {
+		info, err := file.Info()
 		if err != nil {
 			return nil, err
 		}
@@ -133,7 +137,11 @@ func (s *Store) GetFiles() ([]string, error) {
 			continue
 		}
 
-		names = append(names, fName.Name())
+		if !strings.Contains(file.Name(), ".msk") {
+			continue
+		}
+
+		names = append(names, file.Name())
 	}
 
 	return names, err
