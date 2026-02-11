@@ -14,7 +14,10 @@ func (a *ArgonCrypt) Encrypt(secret domain.Secret) (domain.EncryptedSecret, erro
 		return domain.EncryptedSecret{}, err
 	}
 
-	key := getArgonDeriveKey(a.mk, salt)
+	key, err := getArgonDeriveKey(a.mk, salt)
+	if err != nil {
+		return domain.EncryptedSecret{}, err
+	}
 
 	block, err := aes.NewCipher(key)
 	if err != nil {

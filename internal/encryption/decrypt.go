@@ -42,7 +42,10 @@ func (a *ArgonCrypt) Decrypt(cipherData []byte) (domain.Secret, error) {
 
 	cipherText := cipherData[offset:]
 
-	key := getArgonDeriveKey(a.mk, salt)
+	key, err := getArgonDeriveKey(a.mk, salt)
+	if err != nil {
+		return domain.Secret{}, err
+	}
 	defer cleanupByte(key)
 
 	block, err := aes.NewCipher(key)
