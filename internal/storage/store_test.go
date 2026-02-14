@@ -48,7 +48,6 @@ func TestNewStore(t *testing.T) {
 		defer os.Remove(tempFile.Name())
 
 		storePath := filepath.Join(tempFile.Name(), "subdir")
-		t.Log(storePath)
 
 		_, err = NewStore(storePath)
 		if err != nil {
@@ -466,7 +465,6 @@ func TestSaveFile(t *testing.T) {
 		}
 
 		err := store.SaveFile(secret, "fail")
-		t.Log(err)
 		if err == nil {
 			t.Fatal("expected an error for unwritable directory, got nil")
 		}

@@ -8,7 +8,6 @@ func TestRandomBytes(t *testing.T) {
 
 		for _, expectedSize := range expectedSizes {
 			bytesArray, err := randomBytes(expectedSize)
-			t.Logf("bytes value: %v", bytesArray)
 			if err != nil {
 				t.Fatal("failed to create the bytes array")
 			}
