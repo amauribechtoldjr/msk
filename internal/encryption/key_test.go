@@ -36,6 +36,7 @@ func TestGetArgonDeriveKey(t *testing.T) {
 		if err != nil {
 			t.Fatal("failed to generate argon derived key")
 		}
+
 		key2, err := getArgonDeriveKey(masterPassword, salt)
 		if err != nil {
 			t.Fatal("failed to generate argon derived key")
@@ -109,7 +110,7 @@ func TestGetArgonDeriveKey(t *testing.T) {
 			t.Fatal("expected ErrInvalidPass, got no error")
 		}
 
-		if !errors.Is(ErrInvalidPass, err) {
+		if !errors.Is(err, ErrInvalidPass) {
 			t.Fatalf("expected ErrInvalidPass, got %v", err)
 		}
 	})
@@ -123,7 +124,7 @@ func TestGetArgonDeriveKey(t *testing.T) {
 			t.Fatal("expected error, got nil")
 		}
 
-		if !errors.Is(ErrInvalidSalt, err) {
+		if !errors.Is(err, ErrInvalidSalt) {
 			t.Fatalf("expected ErrInvalidPass, got %v", err)
 		}
 	})

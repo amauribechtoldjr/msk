@@ -9,6 +9,16 @@ import (
 	"github.com/amauribechtoldjr/msk/internal/domain"
 )
 
+func buildCipherData(salt [MSK_SALT_SIZE]byte, nonce [MSK_NONCE_SIZE]byte, cipherText []byte) []byte {
+	buf := make([]byte, 0, MSK_HEADER_SIZE+len(cipherText))
+	buf = append(buf, []byte(MSK_MAGIC_VALUE)...)
+	buf = append(buf, MSK_FILE_VERSION)
+	buf = append(buf, salt[:]...)
+	buf = append(buf, nonce[:]...)
+	buf = append(buf, cipherText...)
+	return buf
+}
+
 func TestNewArgonCrypt(t *testing.T) {
 	t.Run("should initialize the struct correctly", func(t *testing.T) {
 		var crypt Encryption = NewArgonCrypt()
@@ -42,16 +52,6 @@ func newConfiguredCrypt(masterKey string) *ArgonCrypt {
 	crypt := NewArgonCrypt()
 	crypt.ConfigMK([]byte(masterKey))
 	return crypt
-}
-
-func buildCipherData(salt [MSK_SALT_SIZE]byte, nonce [MSK_NONCE_SIZE]byte, cipherText []byte) []byte {
-	buf := make([]byte, 0, MSK_HEADER_SIZE+len(cipherText))
-	buf = append(buf, []byte(MSK_MAGIC_VALUE)...)
-	buf = append(buf, MSK_FILE_VERSION)
-	buf = append(buf, salt[:]...)
-	buf = append(buf, nonce[:]...)
-	buf = append(buf, cipherText...)
-	return buf
 }
 
 func TestEncrypt(t *testing.T) {

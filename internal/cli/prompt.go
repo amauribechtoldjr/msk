@@ -4,23 +4,52 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 
 	"github.com/amauribechtoldjr/msk/internal/logger"
+	"github.com/amauribechtoldjr/msk/internal/validator"
 	"golang.org/x/term"
 )
 
-func PromptPassword(label string) ([]byte, error) {
+var ErrInvalidValue = errors.New("Invalid master key.")
+var ErrConfirmationMatch = errors.New("Invalid master key confirmation.")
+
+func PromptSafeValue(label string) ([]byte, error) {
 	logger.PrintInfo(label)
-	bytePassword, err := term.ReadPassword(int(os.Stdin.Fd()))
+	safeValue, err := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 
 	if err != nil {
 		return nil, err
 	}
 
-	if len(bytePassword) == 0 {
-		return nil, errors.New("Invalid master key.")
+	if len(safeValue) == 0 {
+		return nil, ErrInvalidValue
 	}
 
-	return bytePassword, nil
+	return safeValue, nil
+}
+
+func PromptMasterPassword(shouldConfirm bool) ([]byte, error) {
+	pass, err := PromptSafeValue("Enter master password:")
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validator.ValidateMasterPass(string(pass)); err != nil {
+		return nil, err
+	}
+
+	if shouldConfirm {
+		passConfirmation, err := PromptSafeValue("Enter master password again to confirm operation:")
+		if err != nil {
+			return nil, err
+		}
+
+		if !reflect.DeepEqual(pass, passConfirmation) {
+			return nil, ErrConfirmationMatch
+		}
+	}
+
+	return pass, nil
 }

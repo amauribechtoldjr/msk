@@ -15,11 +15,11 @@ var (
 )
 
 type MSKService struct {
-	repo   storage.Store
+	repo   storage.Repository
 	crypto encryption.Encryption
 }
 
-func NewMSKService(r storage.Store, c encryption.Encryption) *MSKService {
+func NewMSKService(r storage.Repository, c encryption.Encryption) *MSKService {
 	return &MSKService{
 		crypto: c,
 		repo:   r,
@@ -31,8 +31,11 @@ func (s *MSKService) ConfigMK(mk []byte) {
 }
 
 func (s *MSKService) DeleteSecret(name string) error {
-	_, err := s.repo.DeleteFile(name)
+	if !s.repo.FileExists(name) {
+		return ErrSecretNotFound
+	}
 
+	err := s.repo.DeleteFile(name)
 	if err != nil {
 		return err
 	}

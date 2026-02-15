@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/amauribechtoldjr/msk/internal/app"
@@ -13,23 +12,24 @@ import (
 )
 
 func main() {
+
 	if err := clip.Init(); err != nil {
-		logger.RenderError(fmt.Errorf("clipboard initialization failed: %w", err))
+		logger.PrintError("clipboard initialization failed")
 		os.Exit(1)
 	}
 
 	store, err := storage.NewStore("./vault/")
 	if err != nil {
-		logger.RenderError(err)
+		logger.PrintError("vault initialization failed")
 		os.Exit(1)
 	}
 
 	enc := encryption.NewArgonCrypt()
-	service := app.NewMSKService(*store, enc)
+	service := app.NewMSKService(store, enc)
 
-	rootCmd := cli.NewMSKCmd(*service)
+	rootCmd := cli.NewMSKCmd(service)
 	if err := rootCmd.Execute(); err != nil {
-		logger.RenderError(err)
+		logger.PrintError("%s\n", err)
 		os.Exit(1)
 	}
 

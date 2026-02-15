@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewAddCmd(service app.MSKService) *cobra.Command {
+func NewAddCmd(service *app.MSKService) *cobra.Command {
 	addCmd := &cobra.Command{
 		Use:           "add <name>",
 		Aliases:       []string{"a"},
@@ -18,6 +18,16 @@ func NewAddCmd(service app.MSKService) *cobra.Command {
 		Long:          ``,
 		SilenceErrors: true,
 		SilenceUsage:  true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			mk, err := PromptMasterPassword(false)
+			if err != nil {
+				return err
+			}
+
+			service.ConfigMK(mk)
+
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("password name is required")
@@ -27,19 +37,19 @@ func NewAddCmd(service app.MSKService) *cobra.Command {
 
 			err := validator.Validate(name)
 			if err != nil {
-				return fmt.Errorf("invalid password name: %w", err)
+				return fmt.Errorf("invalid password name")
 			}
 
 			value, err := cmd.Flags().GetString("password")
 			if err != nil {
-				return fmt.Errorf("failed to retrieve password value: %w", err)
+				return fmt.Errorf("failed to retrieve master pass")
 			}
 
 			password := []byte(value)
 
 			if value == "" {
 				var err error
-				password, err = PromptPassword("Enter password:")
+				password, err = PromptSafeValue("Enter password:")
 				if err != nil {
 					return err
 				}

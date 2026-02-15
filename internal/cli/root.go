@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewMSKCmd(service app.MSKService) *cobra.Command {
+func NewMSKCmd(service *app.MSKService) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "msk",
 		Short: "MSK is a lightweight, offline password manager that securely encrypts your credentials using a master password.",
@@ -16,20 +16,7 @@ func NewMSKCmd(service app.MSKService) *cobra.Command {
 			All passwords are encrypted using a master password, 
 			ensuring that even if someone gains access to your machine, 
 			they won't be able to view any stored data without the correct master key.`,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			mk, err := PromptPassword("Enter master password:")
-			if err != nil {
-				return err
-			}
-
-			service.ConfigMK(mk)
-
-			return nil
-		},
 	}
-
-	cmd.PersistentFlags().StringP("master", "m", "", "Set the master key manually.")
-	cmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	addCmd := NewAddCmd(service)
 	cmd.AddCommand(addCmd)

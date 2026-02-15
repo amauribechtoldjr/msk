@@ -14,9 +14,9 @@ type Secret struct {
 	Name string
 }
 
-func NewListCmd(service app.MSKService) *cobra.Command {
+func NewListCmd(service *app.MSKService) *cobra.Command {
 	listCmd := &cobra.Command{
-		Use:           "list <name>",
+		Use:           "list",
 		Aliases:       []string{"l"},
 		Short:         "Used to list passwords from the vault.",
 		Long:          ``,

@@ -3,7 +3,6 @@ package validator
 import (
 	"errors"
 	"regexp"
-	"runtime"
 	"strings"
 	"unicode"
 )
@@ -24,6 +23,22 @@ var windowsReservedNames = map[string]bool{
 	"com5": true, "com6": true, "com7": true, "com8": true, "com9": true,
 	"lpt1": true, "lpt2": true, "lpt3": true, "lpt4": true,
 	"lpt5": true, "lpt6": true, "lpt7": true, "lpt8": true, "lpt9": true,
+}
+
+var validPattern = regexp.MustCompile(`^[A-Za-z0-9_\-]+$`)
+
+func ValidateMasterPass(pass string) error {
+	if len(pass) < 8 {
+		return errors.New("master pass cannot be smaller then 8 characters")
+	}
+
+	if len(pass) > 255 {
+		return errors.New("master pass cannot exceed 255 characters")
+	}
+
+	// TODO: include stronger password validations
+
+	return nil
 }
 
 func ValidateName(name string) error {
@@ -49,9 +64,17 @@ func ValidateName(name string) error {
 		return ErrPathSeparator
 	}
 
-	validPattern := regexp.MustCompile(`^[A-Za-z0-9_\-]+$`)
 	if !validPattern.MatchString(name) {
 		return ErrInvalidCharacters
+	}
+
+	return nil
+}
+
+func validateReservedNames(name string) error {
+	err := ValidateWindowsReservedName(name)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -71,11 +94,9 @@ func Validate(name string) error {
 		return err
 	}
 
-	if runtime.GOOS == "windows" {
-		err = ValidateWindowsReservedName(name)
-		if err != nil {
-			return err
-		}
+	err = validateReservedNames(name)
+	if err != nil {
+		return err
 	}
 
 	return nil

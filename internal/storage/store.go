@@ -2,7 +2,6 @@ package storage
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +11,14 @@ import (
 
 var ErrNotFound = errors.New("secret not found")
 var ErrInvalidSecret = errors.New("secret invalid")
+
+type Repository interface {
+	FileExists(name string) bool
+	GetFile(name string) ([]byte, error)
+	SaveFile(encryption domain.EncryptedSecret, name string) error
+	DeleteFile(name string) error
+	GetFiles() ([]string, error)
+}
 
 type Store struct {
 	dir string
@@ -71,8 +78,6 @@ func (s *Store) SaveFile(encryption domain.EncryptedSecret, name string) error {
 		_ = dir.Sync()
 	}
 
-	// TODO: study atomically writing strategies
-
 	return nil
 }
 
@@ -89,24 +94,24 @@ func (s *Store) GetFile(name string) ([]byte, error) {
 	return data, nil
 }
 
-func (s *Store) DeleteFile(name string) (bool, error) {
+func (s *Store) DeleteFile(name string) error {
 	secretPath := s.secretPath(name)
-	fmt.Printf("secretPath: %v \n", secretPath)
+
 	info, err := os.Stat(secretPath)
 	if err != nil {
-		return false, ErrNotFound
+		return ErrNotFound
 	}
 
 	if info.IsDir() {
-		return false, ErrInvalidSecret
+		return ErrInvalidSecret
 	}
 
 	err = os.Remove(secretPath)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return true, nil
+	return nil
 }
 
 func (s *Store) FileExists(name string) bool {
@@ -120,9 +125,8 @@ func (s *Store) FileExists(name string) bool {
 
 func (s *Store) GetFiles() ([]string, error) {
 	files, err := os.ReadDir(s.dir)
-
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	var names []string

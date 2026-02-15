@@ -152,13 +152,9 @@ func TestDeleteFile(t *testing.T) {
 			t.Fatalf("failed to write test file: %v", err)
 		}
 
-		success, err := store.DeleteFile(fileName)
+		err = store.DeleteFile(fileName)
 		if err != nil {
 			t.Fatalf("failed to delete file: %v", err)
-		}
-
-		if !success {
-			t.Fatal("failed to delete file")
 		}
 
 		_, err = os.Stat(filePath)
@@ -171,13 +167,9 @@ func TestDeleteFile(t *testing.T) {
 		fileName := "does-not-exists"
 		store := initializeStore(t)
 
-		success, err := store.DeleteFile(fileName)
+		err := store.DeleteFile(fileName)
 		if err != nil && !errors.Is(err, ErrNotFound) {
 			t.Fatalf("expected %v, got %v", ErrNotFound, err)
-		}
-
-		if success {
-			t.Fatalf("should not return true when file does not exists")
 		}
 	})
 
@@ -189,13 +181,9 @@ func TestDeleteFile(t *testing.T) {
 			t.Fatalf("failed to write test file: %v", err)
 		}
 
-		success, err := store.DeleteFile("MyKey")
+		err = store.DeleteFile("MyKey")
 		if err != nil {
 			t.Fatal("failed to delete file case-insensitively")
-		}
-
-		if !success {
-			t.Fatal("should return true when file exists but case-insensitively")
 		}
 	})
 }

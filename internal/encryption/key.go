@@ -21,8 +21,8 @@ func getArgonDeriveKey(password, salt []byte) ([]byte, error) {
 	return argon2.IDKey(
 		password,
 		salt,
-		3,
-		64*1024,
+		6,
+		128*1024,
 		4,
 		32,
 	), nil

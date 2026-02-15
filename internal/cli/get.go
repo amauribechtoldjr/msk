@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewGetCmd(service app.MSKService) *cobra.Command {
+func NewGetCmd(service *app.MSKService) *cobra.Command {
 	getCmd := &cobra.Command{
 		Use:           "get <name>",
 		Aliases:       []string{"g"},
@@ -19,6 +19,16 @@ func NewGetCmd(service app.MSKService) *cobra.Command {
 		Long:          ``,
 		SilenceErrors: true,
 		SilenceUsage:  true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			mk, err := PromptMasterPassword(false)
+			if err != nil {
+				return err
+			}
+
+			service.ConfigMK(mk)
+
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("password name is required")
@@ -40,7 +50,10 @@ func NewGetCmd(service app.MSKService) *cobra.Command {
 				return fmt.Errorf("failed to copy password to your clipboard: %w", err)
 			}
 
-			logger.PrintSuccess("Password copied to clipboard (press Ctrl+V to paste)")
+			logger.PrintSuccess("Password copied to clipboard (press Ctrl+V to paste)\n\n")
+
+			clip.Clear()
+
 			return nil
 		},
 	}

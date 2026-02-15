@@ -15,3 +15,6 @@ test:
 
 test-v:
 	go test ./... -v
+
+clean-vault:
+	rm -Rf ./vault/
