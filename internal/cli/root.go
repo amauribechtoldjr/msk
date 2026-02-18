@@ -30,5 +30,8 @@ func NewMSKCmd(service *app.MSKService) *cobra.Command {
 	listCmd := NewListCmd(service)
 	cmd.AddCommand(listCmd)
 
+	updateCmd := NewUpdateCmd(service)
+	cmd.AddCommand(updateCmd)
+
 	return cmd
 }

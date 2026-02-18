@@ -62,6 +62,25 @@ func (s *MSKService) AddSecret(name string, rawP []byte) error {
 	return s.repo.SaveFile(encryptionResult, name)
 }
 
+func (s *MSKService) UpdateSecret(name string, rawP []byte) error {
+	if !s.repo.FileExists(name) {
+		return ErrSecretNotFound
+	}
+
+	secret := domain.Secret{
+		Name:      name,
+		Password:  rawP,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	encryptionResult, err := s.crypto.Encrypt(secret)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.SaveFile(encryptionResult, name)
+}
+
 func (s *MSKService) GetSecret(name string) ([]byte, error) {
 	if !s.repo.FileExists(name) {
 		return nil, ErrSecretNotFound
