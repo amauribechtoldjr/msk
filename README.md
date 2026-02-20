@@ -22,24 +22,29 @@ As long as your master password remains secret, your data stays protected. 🚀
 To save a new password:
 
 ```
-msk add github -p "my-password"
+msk add github
 ```
 
-To get the password:
+To update a password:
+
+```
+msk update github
+```
+
+To get the password (copies to clipboard):
 
 ```
 msk get github
 ```
 
-To delete passwords:
+To delete a password:
 
 ```
 msk del github
 ```
 
-TODO:
+To list all stored passwords:
 
-1 - Add config command to store a file with a single data, that i need to always be able to decrypt first with the master key, and then I can do anything else
-.Add this rule for add/get/del/upd
-
-2 - Add second master key prompt confirmation to update/delete commands
+```
+msk list
+```
