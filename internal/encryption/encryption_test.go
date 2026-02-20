@@ -38,11 +38,19 @@ func TestConfigMk(t *testing.T) {
 			t.Fatal("failed to initialize master key empty")
 		}
 
+		crypt.ConfigMK([]byte("master-key"))
+		if crypt.mk == nil {
+			t.Fatal("expected mk to be set after ConfigMK")
+		}
+
+		buffer, err := crypt.mk.Open()
+		if err != nil {
+			t.Fatal("failed to open the master key enclave buffer")
+		}
+
 		expectedKey := []byte("master-key")
 
-		crypt.ConfigMK(expectedKey)
-
-		if !reflect.DeepEqual(crypt.mk, expectedKey) {
+		if !reflect.DeepEqual(buffer.Bytes(), expectedKey) {
 			t.Fatalf("expected key: %v and got: %v", expectedKey, crypt.mk)
 		}
 	})

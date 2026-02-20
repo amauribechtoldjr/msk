@@ -7,6 +7,8 @@ import (
 	"errors"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
+	"github.com/amauribechtoldjr/msk/internal/wipe"
+	"github.com/awnumar/memguard"
 )
 
 const (
@@ -28,10 +30,11 @@ type Encryption interface {
 	Encrypt(secret domain.Secret) (domain.EncryptedSecret, error)
 	Decrypt(cipherData []byte) (domain.Secret, error)
 	ConfigMK(mk []byte)
+	DestroyMK()
 }
 
 type ArgonCrypt struct {
-	mk []byte
+	mk *memguard.Enclave
 }
 
 func NewArgonCrypt() *ArgonCrypt {
@@ -39,7 +42,12 @@ func NewArgonCrypt() *ArgonCrypt {
 }
 
 func (ac *ArgonCrypt) ConfigMK(mk []byte) {
-	ac.mk = mk
+	buffer := memguard.NewBufferFromBytes(mk)
+	ac.mk = buffer.Seal()
+}
+
+func (ac *ArgonCrypt) DestroyMK() {
+	ac.mk = nil
 }
 
 func (a *ArgonCrypt) Decrypt(cipherData []byte) (domain.Secret, error) {
@@ -65,10 +73,21 @@ func (a *ArgonCrypt) Decrypt(cipherData []byte) (domain.Secret, error) {
 
 	cipherText := cipherData[offset:]
 
-	key, err := getArgonDeriveKey(a.mk, salt)
+	if a.mk == nil {
+		return domain.Secret{}, errors.New("failed to load master key")
+	}
+
+	lockedBuffer, err := a.mk.Open()
 	if err != nil {
 		return domain.Secret{}, err
 	}
+	defer lockedBuffer.Destroy()
+
+	key, err := getArgonDeriveKey(lockedBuffer.Bytes(), salt)
+	if err != nil {
+		return domain.Secret{}, err
+	}
+	defer wipe.Bytes(key)
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -84,6 +103,7 @@ func (a *ArgonCrypt) Decrypt(cipherData []byte) (domain.Secret, error) {
 	if err != nil {
 		return domain.Secret{}, ErrDecryption
 	}
+	defer wipe.Bytes(plaintext)
 
 	var s domain.Secret
 	if err := json.Unmarshal(plaintext, &s); err != nil {
@@ -99,10 +119,21 @@ func (a *ArgonCrypt) Encrypt(secret domain.Secret) (domain.EncryptedSecret, erro
 		return domain.EncryptedSecret{}, err
 	}
 
-	key, err := getArgonDeriveKey(a.mk, salt)
+	if a.mk == nil {
+		return domain.EncryptedSecret{}, errors.New("failed to load master key")
+	}
+
+	lockedBuffer, err := a.mk.Open()
 	if err != nil {
 		return domain.EncryptedSecret{}, err
 	}
+	defer lockedBuffer.Destroy()
+
+	key, err := getArgonDeriveKey(lockedBuffer.Bytes(), salt)
+	if err != nil {
+		return domain.EncryptedSecret{}, err
+	}
+	defer wipe.Bytes(key)
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -125,6 +156,7 @@ func (a *ArgonCrypt) Encrypt(secret domain.Secret) (domain.EncryptedSecret, erro
 	}
 
 	cipherText := gcm.Seal(nil, nonce, plaintext, nil)
+	defer wipe.Bytes(plaintext)
 
 	return domain.EncryptedSecret{
 		Data:  cipherText,

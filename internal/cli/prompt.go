@@ -8,6 +8,7 @@ import (
 
 	"github.com/amauribechtoldjr/msk/internal/logger"
 	"github.com/amauribechtoldjr/msk/internal/validator"
+	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"golang.org/x/term"
 )
 
@@ -33,22 +34,29 @@ func PromptSafeValue(label string) ([]byte, error) {
 func PromptMasterPassword(shouldConfirm bool) ([]byte, error) {
 	pass, err := PromptSafeValue("Enter master password:")
 	if err != nil {
+		wipe.Bytes(pass)
 		return nil, err
 	}
 
-	if err := validator.ValidateMasterPass(string(pass)); err != nil {
+	if err := validator.ValidateMasterPass(pass); err != nil {
+		wipe.Bytes(pass)
 		return nil, err
 	}
 
 	if shouldConfirm {
 		passConfirmation, err := PromptSafeValue("Enter master password again to confirm operation:")
 		if err != nil {
+			wipe.Bytes(pass)
 			return nil, err
 		}
 
 		if !reflect.DeepEqual(pass, passConfirmation) {
+			wipe.Bytes(pass)
+			wipe.Bytes(passConfirmation)
 			return nil, ErrConfirmationMatch
 		}
+
+		wipe.Bytes(passConfirmation)
 	}
 
 	return pass, nil

@@ -7,6 +7,7 @@ import (
 	"github.com/amauribechtoldjr/msk/internal/app"
 	"github.com/amauribechtoldjr/msk/internal/logger"
 	"github.com/amauribechtoldjr/msk/internal/validator"
+	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/spf13/cobra"
 )
 
@@ -28,6 +29,11 @@ func NewAddCmd(service *app.MSKService) *cobra.Command {
 
 			return nil
 		},
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+			service.DestroyMK()
+
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("password name is required")
@@ -40,20 +46,11 @@ func NewAddCmd(service *app.MSKService) *cobra.Command {
 				return fmt.Errorf("invalid password name")
 			}
 
-			value, err := cmd.Flags().GetString("password")
+			password, err := PromptSafeValue("Enter password:")
 			if err != nil {
-				return fmt.Errorf("failed to retrieve master pass")
+				return err
 			}
-
-			password := []byte(value)
-
-			if value == "" {
-				var err error
-				password, err = PromptSafeValue("Enter password:")
-				if err != nil {
-					return err
-				}
-			}
+			defer wipe.Bytes(password)
 
 			err = service.AddSecret(name, password)
 			if err != nil {
@@ -64,8 +61,6 @@ func NewAddCmd(service *app.MSKService) *cobra.Command {
 			return nil
 		},
 	}
-
-	addCmd.Flags().StringP("password", "p", "", "Password identifier.")
 
 	return addCmd
 }

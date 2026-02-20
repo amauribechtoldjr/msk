@@ -27,7 +27,7 @@ var windowsReservedNames = map[string]bool{
 
 var validPattern = regexp.MustCompile(`^[A-Za-z0-9_\-]+$`)
 
-func ValidateMasterPass(pass string) error {
+func ValidateMasterPass(pass []byte) error {
 	if len(pass) < 8 {
 		return errors.New("master pass cannot be smaller then 8 characters")
 	}

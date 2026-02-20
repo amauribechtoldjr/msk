@@ -104,8 +104,9 @@ func TestGetSecret(t *testing.T) {
 	t.Run("should return decrypted password successfully", func(t *testing.T) {
 		service := newTestService(t, "master-key")
 		expected := []byte("s3cur3p@ss")
+		inputPass := []byte("s3cur3p@ss")
 
-		err := service.AddSecret("my-secret", expected)
+		err := service.AddSecret("my-secret", inputPass)
 		if err != nil {
 			t.Fatalf("add failed: %v", err)
 		}

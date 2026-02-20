@@ -8,6 +8,7 @@ import (
 	clip "github.com/amauribechtoldjr/msk/internal/clip"
 	"github.com/amauribechtoldjr/msk/internal/logger"
 	"github.com/amauribechtoldjr/msk/internal/validator"
+	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/spf13/cobra"
 )
 
@@ -29,6 +30,11 @@ func NewGetCmd(service *app.MSKService) *cobra.Command {
 
 			return nil
 		},
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+			service.DestroyMK()
+
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("password name is required")
@@ -44,9 +50,11 @@ func NewGetCmd(service *app.MSKService) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to get password: %w", err)
 			}
+			defer wipe.Bytes(password)
 
 			err = clip.CopyText(password)
 			if err != nil {
+				wipe.Bytes(password)
 				return fmt.Errorf("failed to copy password to your clipboard: %w", err)
 			}
 

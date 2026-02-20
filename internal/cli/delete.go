@@ -28,6 +28,11 @@ func NewDeleteCmd(service *app.MSKService) *cobra.Command {
 
 			return nil
 		},
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+			service.DestroyMK()
+
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("password name is required")

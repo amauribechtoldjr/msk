@@ -7,6 +7,7 @@ import (
 	"github.com/amauribechtoldjr/msk/internal/domain"
 	"github.com/amauribechtoldjr/msk/internal/encryption"
 	"github.com/amauribechtoldjr/msk/internal/storage"
+	"github.com/amauribechtoldjr/msk/internal/wipe"
 )
 
 var (
@@ -28,6 +29,10 @@ func NewMSKService(r storage.Repository, c encryption.Encryption) *MSKService {
 
 func (s *MSKService) ConfigMK(mk []byte) {
 	s.crypto.ConfigMK(mk)
+}
+
+func (s *MSKService) DestroyMK() {
+	s.crypto.DestroyMK()
 }
 
 func (s *MSKService) DeleteSecret(name string) error {
@@ -53,6 +58,7 @@ func (s *MSKService) AddSecret(name string, rawP []byte) error {
 		Password:  rawP,
 		CreatedAt: time.Now().UTC(),
 	}
+	defer wipe.Bytes(secret.Password)
 
 	encryptionResult, err := s.crypto.Encrypt(secret)
 	if err != nil {
@@ -72,6 +78,7 @@ func (s *MSKService) UpdateSecret(name string, rawP []byte) error {
 		Password:  rawP,
 		CreatedAt: time.Now().UTC(),
 	}
+	defer wipe.Bytes(secret.Password)
 
 	encryptionResult, err := s.crypto.Encrypt(secret)
 	if err != nil {
