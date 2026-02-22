@@ -4,20 +4,10 @@ import (
 	"errors"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
+	"github.com/amauribechtoldjr/msk/internal/format"
 )
-
-func buildCipherData(salt [MSK_SALT_SIZE]byte, nonce [MSK_NONCE_SIZE]byte, cipherText []byte) []byte {
-	buf := make([]byte, 0, MSK_HEADER_SIZE+len(cipherText))
-	buf = append(buf, []byte(MSK_MAGIC_VALUE)...)
-	buf = append(buf, MSK_FILE_VERSION)
-	buf = append(buf, salt[:]...)
-	buf = append(buf, nonce[:]...)
-	buf = append(buf, cipherText...)
-	return buf
-}
 
 func TestNewArgonCrypt(t *testing.T) {
 	t.Run("should initialize the struct correctly", func(t *testing.T) {
@@ -66,9 +56,8 @@ func TestEncrypt(t *testing.T) {
 	t.Run("should encrypt a secret successfully", func(t *testing.T) {
 		crypt := newConfiguredCrypt("master-password")
 		secret := domain.Secret{
-			Name:      "test-secret",
-			Password:  []byte("s3cur3p@ss"),
-			CreatedAt: time.Now().Truncate(time.Second),
+			Name:     "test-secret",
+			Password: []byte("s3cur3p@ss"),
 		}
 
 		encrypted, err := crypt.Encrypt(secret)
@@ -76,25 +65,29 @@ func TestEncrypt(t *testing.T) {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
-		if len(encrypted.Data) == 0 {
+		salt, nonce, data, err := format.UnmarshalFile(encrypted)
+		if err != nil {
+			t.Fatalf("failed to unmarshal encrypted output: %v", err)
+		}
+
+		if len(data) == 0 {
 			t.Fatal("expected non-empty cipher data")
 		}
 
-		if encrypted.Salt == [MSK_SALT_SIZE]byte{} {
-			t.Fatal("expected non-zero salt")
+		if len(salt) != format.MSK_SALT_SIZE {
+			t.Fatal("expected valid salt")
 		}
 
-		if encrypted.Nonce == [MSK_NONCE_SIZE]byte{} {
-			t.Fatal("expected non-zero nonce")
+		if len(nonce) != format.MSK_NONCE_SIZE {
+			t.Fatal("expected valid nonce")
 		}
 	})
 
 	t.Run("should produce different cipher data for same input", func(t *testing.T) {
 		crypt := newConfiguredCrypt("master-password")
 		secret := domain.Secret{
-			Name:      "test-secret",
-			Password:  []byte("s3cur3p@ss"),
-			CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			Name:     "test-secret",
+			Password: []byte("s3cur3p@ss"),
 		}
 
 		enc1, err := crypt.Encrypt(secret)
@@ -107,7 +100,7 @@ func TestEncrypt(t *testing.T) {
 			t.Fatalf("second encrypt failed: %v", err)
 		}
 
-		if reflect.DeepEqual(enc1.Data, enc2.Data) {
+		if reflect.DeepEqual(enc1, enc2) {
 			t.Fatal("expected different cipher data due to random salt/nonce")
 		}
 	})
@@ -115,9 +108,8 @@ func TestEncrypt(t *testing.T) {
 	t.Run("should return error when master key is not configured", func(t *testing.T) {
 		crypt := NewArgonCrypt()
 		secret := domain.Secret{
-			Name:      "test",
-			Password:  []byte("pass"),
-			CreatedAt: time.Now(),
+			Name:     "test",
+			Password: []byte("pass"),
 		}
 
 		_, err := crypt.Encrypt(secret)
@@ -131,9 +123,8 @@ func TestDecrypt(t *testing.T) {
 	t.Run("should decrypt an encrypted secret correctly (round-trip)", func(t *testing.T) {
 		crypt := newConfiguredCrypt("master-password")
 		secret := domain.Secret{
-			Name:      "my-secret",
-			Password:  []byte("p@ssw0rd!"),
-			CreatedAt: time.Date(2025, 6, 15, 10, 30, 0, 0, time.UTC),
+			Name:     "my-secret",
+			Password: []byte("p@ssw0rd!"),
 		}
 
 		encrypted, err := crypt.Encrypt(secret)
@@ -141,9 +132,7 @@ func TestDecrypt(t *testing.T) {
 			t.Fatalf("encrypt failed: %v", err)
 		}
 
-		cipherData := buildCipherData(encrypted.Salt, encrypted.Nonce, encrypted.Data)
-
-		decrypted, err := crypt.Decrypt(cipherData)
+		decrypted, err := crypt.Decrypt(encrypted)
 		if err != nil {
 			t.Fatalf("decrypt failed: %v", err)
 		}
@@ -154,10 +143,6 @@ func TestDecrypt(t *testing.T) {
 
 		if !reflect.DeepEqual(decrypted.Password, secret.Password) {
 			t.Fatalf("expected password %v, got %v", secret.Password, decrypted.Password)
-		}
-
-		if !decrypted.CreatedAt.Equal(secret.CreatedAt) {
-			t.Fatalf("expected createdAt %v, got %v", secret.CreatedAt, decrypted.CreatedAt)
 		}
 	})
 
@@ -170,7 +155,7 @@ func TestDecrypt(t *testing.T) {
 			t.Fatal("expected error for short data")
 		}
 
-		if !errors.Is(err, ErrCorruptedFile) {
+		if !errors.Is(err, format.ErrCorruptedFile) {
 			t.Fatalf("expected ErrCorruptedFile, got %v", err)
 		}
 	})
@@ -178,25 +163,24 @@ func TestDecrypt(t *testing.T) {
 	t.Run("should return ErrCorruptedFile when magic value is wrong", func(t *testing.T) {
 		crypt := newConfiguredCrypt("master-password")
 
-		data := make([]byte, MSK_HEADER_SIZE+16)
+		data := make([]byte, format.MSK_HEADER_SIZE+16)
 		copy(data[:3], "BAD")
-		data[3] = MSK_FILE_VERSION
+		data[3] = format.MSK_FILE_VERSION
 
 		_, err := crypt.Decrypt(data)
-		t.Log(err)
 		if err == nil {
 			t.Fatal("expected error for wrong magic value")
 		}
 
-		if !errors.Is(err, ErrCorruptedFile) {
+		if !errors.Is(err, format.ErrCorruptedFile) {
 			t.Fatalf("expected ErrCorruptedFile, got %v", err)
 		}
 	})
 
 	t.Run("should return ErrUnsupportedFileVersion when version is wrong", func(t *testing.T) {
 		crypt := newConfiguredCrypt("master-password")
-		data := make([]byte, MSK_HEADER_SIZE+16)
-		copy(data[:3], MSK_MAGIC_VALUE)
+		data := make([]byte, format.MSK_HEADER_SIZE+16)
+		copy(data[:3], format.MSK_MAGIC_VALUE)
 		data[3] = 99
 
 		_, err := crypt.Decrypt(data)
@@ -204,7 +188,7 @@ func TestDecrypt(t *testing.T) {
 			t.Fatal("expected error for unsupported version")
 		}
 
-		if !errors.Is(err, ErrUnsupportedFileVersion) {
+		if !errors.Is(err, format.ErrUnsupportedFileVersion) {
 			t.Fatalf("expected ErrUnsupportedFileVersion, got %v", err)
 		}
 	})
@@ -212,9 +196,8 @@ func TestDecrypt(t *testing.T) {
 	t.Run("should return ErrDecryption when master key is wrong", func(t *testing.T) {
 		crypt := newConfiguredCrypt("correct-password")
 		secret := domain.Secret{
-			Name:      "test",
-			Password:  []byte("pass"),
-			CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			Name:     "test",
+			Password: []byte("pass"),
 		}
 
 		encrypted, err := crypt.Encrypt(secret)
@@ -222,10 +205,8 @@ func TestDecrypt(t *testing.T) {
 			t.Fatalf("encrypt failed: %v", err)
 		}
 
-		cipherData := buildCipherData(encrypted.Salt, encrypted.Nonce, encrypted.Data)
-
 		wrongCrypt := newConfiguredCrypt("wrong-password")
-		_, err = wrongCrypt.Decrypt(cipherData)
+		_, err = wrongCrypt.Decrypt(encrypted)
 		if err == nil {
 			t.Fatal("expected error with wrong master key")
 		}
@@ -238,9 +219,8 @@ func TestDecrypt(t *testing.T) {
 	t.Run("should return ErrDecryption when cipher data is tampered", func(t *testing.T) {
 		crypt := newConfiguredCrypt("master-password")
 		secret := domain.Secret{
-			Name:      "test",
-			Password:  []byte("pass"),
-			CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			Name:     "test",
+			Password: []byte("pass"),
 		}
 
 		encrypted, err := crypt.Encrypt(secret)
@@ -248,12 +228,10 @@ func TestDecrypt(t *testing.T) {
 			t.Fatalf("encrypt failed: %v", err)
 		}
 
-		cipherData := buildCipherData(encrypted.Salt, encrypted.Nonce, encrypted.Data)
-
 		// Flip a byte in the cipher data portion
-		cipherData[MSK_HEADER_SIZE] ^= 0xFF
+		encrypted[format.MSK_HEADER_SIZE] ^= 0xFF
 
-		_, err = crypt.Decrypt(cipherData)
+		_, err = crypt.Decrypt(encrypted)
 		if err == nil {
 			t.Fatal("expected error with tampered cipher data")
 		}
@@ -265,9 +243,9 @@ func TestDecrypt(t *testing.T) {
 
 	t.Run("should return error when master key is empty", func(t *testing.T) {
 		crypt := NewArgonCrypt()
-		data := make([]byte, MSK_HEADER_SIZE+16)
-		copy(data[:3], MSK_MAGIC_VALUE)
-		data[3] = MSK_FILE_VERSION
+		data := make([]byte, format.MSK_HEADER_SIZE+16)
+		copy(data[:3], format.MSK_MAGIC_VALUE)
+		data[3] = format.MSK_FILE_VERSION
 
 		_, err := crypt.Decrypt(data)
 		if err == nil {

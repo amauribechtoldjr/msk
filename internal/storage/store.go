@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/amauribechtoldjr/msk/internal/domain"
 )
 
 var ErrNotFound = errors.New("secret not found")
@@ -15,7 +13,7 @@ var ErrInvalidSecret = errors.New("secret invalid")
 type Repository interface {
 	FileExists(name string) bool
 	GetFile(name string) ([]byte, error)
-	SaveFile(encryption domain.EncryptedSecret, name string) error
+	SaveFile(encryptedFile []byte, name string) error
 	DeleteFile(name string) error
 	GetFiles() ([]string, error)
 }
@@ -32,7 +30,7 @@ func NewStore(dir string) (*Store, error) {
 	return &Store{dir: dir}, nil
 }
 
-func (s *Store) SaveFile(encryption domain.EncryptedSecret, name string) error {
+func (s *Store) SaveFile(encryptedFile []byte, name string) error {
 	path := s.secretPath(name)
 	tmpPath := path + ".tmp"
 
@@ -46,17 +44,7 @@ func (s *Store) SaveFile(encryption domain.EncryptedSecret, name string) error {
 		os.Remove(tmpPath)
 	}()
 
-	msk := []byte("MSK")
-	version := []byte{1}
-	content := []byte{}
-
-	content = append(content, msk...)
-	content = append(content, version...)
-	content = append(content, encryption.Salt[:]...)
-	content = append(content, encryption.Nonce[:]...)
-	content = append(content, encryption.Data...)
-
-	if _, err := tmpFile.Write(content); err != nil {
+	if _, err := tmpFile.Write(encryptedFile); err != nil {
 		return err
 	}
 

@@ -3,6 +3,7 @@ package encryption
 import (
 	"errors"
 
+	"github.com/amauribechtoldjr/msk/internal/format"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -10,7 +11,7 @@ var ErrInvalidSalt = errors.New("invalid salt size")
 var ErrInvalidPass = errors.New("invalid master pass")
 
 func getArgonDeriveKey(password, salt []byte) ([]byte, error) {
-	if len(salt) != MSK_SALT_SIZE {
+	if len(salt) != format.MSK_SALT_SIZE {
 		return nil, ErrInvalidSalt
 	}
 

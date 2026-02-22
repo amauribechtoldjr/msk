@@ -4,12 +4,14 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	"github.com/amauribechtoldjr/msk/internal/format"
 )
 
 func TestGetArgonDeriveKey(t *testing.T) {
 	t.Run("should return exactly 32 bytes for every password/salt combination", func(t *testing.T) {
 		masterPassword := []byte("master-pass")
-		salt, err := randomBytes(MSK_SALT_SIZE)
+		salt, err := randomBytes(format.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
@@ -27,7 +29,7 @@ func TestGetArgonDeriveKey(t *testing.T) {
 
 	t.Run("should produces identical output for same master and salt", func(t *testing.T) {
 		masterPassword := []byte("master-pass")
-		salt, err := randomBytes(MSK_SALT_SIZE)
+		salt, err := randomBytes(format.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
@@ -49,7 +51,7 @@ func TestGetArgonDeriveKey(t *testing.T) {
 
 	t.Run("should produces different output when different master pass", func(t *testing.T) {
 		masterPassword := []byte("master-pass")
-		salt, err := randomBytes(MSK_SALT_SIZE)
+		salt, err := randomBytes(format.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
@@ -73,7 +75,7 @@ func TestGetArgonDeriveKey(t *testing.T) {
 
 	t.Run("should produces different output when different salt", func(t *testing.T) {
 		masterPassword := []byte("master-pass")
-		salt, err := randomBytes(MSK_SALT_SIZE)
+		salt, err := randomBytes(format.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
@@ -83,7 +85,7 @@ func TestGetArgonDeriveKey(t *testing.T) {
 			t.Fatal("failed to generate argon derived key")
 		}
 
-		salt2, err := randomBytes(MSK_SALT_SIZE)
+		salt2, err := randomBytes(format.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
@@ -100,7 +102,7 @@ func TestGetArgonDeriveKey(t *testing.T) {
 
 	t.Run("should return error when empty pass", func(t *testing.T) {
 		masterPassword := []byte("")
-		salt, err := randomBytes(MSK_SALT_SIZE)
+		salt, err := randomBytes(format.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}

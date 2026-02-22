@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"time"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
 	"github.com/amauribechtoldjr/msk/internal/encryption"
@@ -54,9 +53,8 @@ func (s *MSKService) AddSecret(name string, rawP []byte) error {
 	}
 
 	secret := domain.Secret{
-		Name:      name,
-		Password:  rawP,
-		CreatedAt: time.Now().UTC(),
+		Name:     name,
+		Password: rawP,
 	}
 	defer wipe.Bytes(secret.Password)
 
@@ -74,9 +72,8 @@ func (s *MSKService) UpdateSecret(name string, rawP []byte) error {
 	}
 
 	secret := domain.Secret{
-		Name:      name,
-		Password:  rawP,
-		CreatedAt: time.Now().UTC(),
+		Name:     name,
+		Password: rawP,
 	}
 	defer wipe.Bytes(secret.Password)
 

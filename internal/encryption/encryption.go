@@ -3,31 +3,18 @@ package encryption
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"encoding/json"
 	"errors"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
+	"github.com/amauribechtoldjr/msk/internal/format"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/awnumar/memguard"
 )
 
-const (
-	MSK_MAGIC_VALUE  = "MSK"
-	MSK_FILE_VERSION = byte(1)
-
-	MSK_MAGIC_SIZE   = 3
-	MSK_VERSION_SIZE = 1
-	MSK_SALT_SIZE    = 16
-	MSK_NONCE_SIZE   = 12
-	MSK_HEADER_SIZE  = MSK_MAGIC_SIZE + MSK_VERSION_SIZE + MSK_SALT_SIZE + MSK_NONCE_SIZE
-)
-
 var ErrDecryption = errors.New("decryption failed")
-var ErrCorruptedFile = errors.New("corrupted file")
-var ErrUnsupportedFileVersion = errors.New("unsupported file version")
 
 type Encryption interface {
-	Encrypt(secret domain.Secret) (domain.EncryptedSecret, error)
+	Encrypt(secret domain.Secret) ([]byte, error)
 	Decrypt(cipherData []byte) (domain.Secret, error)
 	ConfigMK(mk []byte)
 	DestroyMK()
@@ -51,27 +38,10 @@ func (ac *ArgonCrypt) DestroyMK() {
 }
 
 func (a *ArgonCrypt) Decrypt(cipherData []byte) (domain.Secret, error) {
-	if len(cipherData) < MSK_HEADER_SIZE {
-		return domain.Secret{}, ErrCorruptedFile
+	salt, nonce, data, err := format.UnmarshalFile(cipherData)
+	if err != nil {
+		return domain.Secret{}, err
 	}
-
-	if string(cipherData[:MSK_MAGIC_SIZE]) != MSK_MAGIC_VALUE {
-		return domain.Secret{}, ErrCorruptedFile
-	}
-
-	if cipherData[MSK_MAGIC_SIZE] != MSK_FILE_VERSION {
-		return domain.Secret{}, ErrUnsupportedFileVersion
-	}
-
-	offset := MSK_MAGIC_SIZE + MSK_VERSION_SIZE
-
-	salt := cipherData[offset : offset+MSK_SALT_SIZE]
-	offset += MSK_SALT_SIZE
-
-	nonce := cipherData[offset : offset+MSK_NONCE_SIZE]
-	offset += MSK_NONCE_SIZE
-
-	cipherText := cipherData[offset:]
 
 	if a.mk == nil {
 		return domain.Secret{}, errors.New("failed to load master key")
@@ -99,68 +69,58 @@ func (a *ArgonCrypt) Decrypt(cipherData []byte) (domain.Secret, error) {
 		return domain.Secret{}, err
 	}
 
-	plaintext, err := gcm.Open(nil, nonce, cipherText, nil)
+	fileBytes, err := gcm.Open(nil, nonce, data, nil)
 	if err != nil {
 		return domain.Secret{}, ErrDecryption
 	}
-	defer wipe.Bytes(plaintext)
+	defer wipe.Bytes(fileBytes)
 
-	var s domain.Secret
-	if err := json.Unmarshal(plaintext, &s); err != nil {
-		return domain.Secret{}, err
-	}
+	secret := format.UnmarshalSecret(fileBytes)
 
-	return s, nil
+	return secret, nil
 }
 
-func (a *ArgonCrypt) Encrypt(secret domain.Secret) (domain.EncryptedSecret, error) {
-	salt, err := randomBytes(MSK_SALT_SIZE)
+func (a *ArgonCrypt) Encrypt(secret domain.Secret) ([]byte, error) {
+	salt, err := randomBytes(format.MSK_SALT_SIZE)
 	if err != nil {
-		return domain.EncryptedSecret{}, err
+		return nil, err
 	}
 
 	if a.mk == nil {
-		return domain.EncryptedSecret{}, errors.New("failed to load master key")
+		return nil, errors.New("failed to load master key")
 	}
 
 	lockedBuffer, err := a.mk.Open()
 	if err != nil {
-		return domain.EncryptedSecret{}, err
+		return nil, err
 	}
 	defer lockedBuffer.Destroy()
 
 	key, err := getArgonDeriveKey(lockedBuffer.Bytes(), salt)
 	if err != nil {
-		return domain.EncryptedSecret{}, err
+		return nil, err
 	}
 	defer wipe.Bytes(key)
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return domain.EncryptedSecret{}, err
+		return nil, err
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return domain.EncryptedSecret{}, err
+		return nil, err
 	}
 
-	nonce, err := randomBytes(MSK_NONCE_SIZE)
+	nonce, err := randomBytes(format.MSK_NONCE_SIZE)
 	if err != nil {
-		return domain.EncryptedSecret{}, err
+		return nil, err
 	}
 
-	plaintext, err := json.Marshal(secret)
-	if err != nil {
-		return domain.EncryptedSecret{}, err
-	}
+	fileBytes := format.MarshalSecret(secret)
 
-	cipherText := gcm.Seal(nil, nonce, plaintext, nil)
-	defer wipe.Bytes(plaintext)
+	cipherBytes := gcm.Seal(nil, nonce, fileBytes, nil)
+	defer wipe.Bytes(fileBytes)
 
-	return domain.EncryptedSecret{
-		Data:  cipherText,
-		Salt:  [MSK_SALT_SIZE]byte(salt),
-		Nonce: [MSK_NONCE_SIZE]byte(nonce),
-	}, nil
+	return format.MarshalFile(salt, nonce, cipherBytes)
 }

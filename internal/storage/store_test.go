@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/amauribechtoldjr/msk/internal/domain"
+	"github.com/amauribechtoldjr/msk/internal/format"
 )
 
 func initializeStore(t *testing.T) Store {
@@ -304,19 +304,24 @@ func TestSaveFile(t *testing.T) {
 		return n
 	}
 
+	marshalOrFail := func(t *testing.T, salt [16]byte, nonce [12]byte, data []byte) []byte {
+		t.Helper()
+		result, err := format.MarshalFile(salt[:], nonce[:], data)
+		if err != nil {
+			t.Fatalf("failed to marshal file: %v", err)
+		}
+		return result
+	}
+
 	t.Run("should create file with correct binary content", func(t *testing.T) {
 		store := initializeStore(t)
 		salt := makeSalt()
 		nonce := makeNonce()
 		data := []byte("encrypted-payload")
 
-		secret := domain.EncryptedSecret{
-			Salt:  salt,
-			Nonce: nonce,
-			Data:  data,
-		}
+		encryptedFile := marshalOrFail(t, salt, nonce, data)
 
-		err := store.SaveFile(secret, "testsecret")
+		err := store.SaveFile(encryptedFile, "testsecret")
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -326,28 +331,17 @@ func TestSaveFile(t *testing.T) {
 			t.Fatalf("failed to read saved file: %v", err)
 		}
 
-		var expected []byte
-		expected = append(expected, []byte("MSK")...)
-		expected = append(expected, 0x01)
-		expected = append(expected, salt[:]...)
-		expected = append(expected, nonce[:]...)
-		expected = append(expected, data...)
-
-		if !bytes.Equal(raw, expected) {
-			t.Fatalf("file content mismatch\nexpected: %x\ngot:      %x", expected, raw)
+		if !bytes.Equal(raw, encryptedFile) {
+			t.Fatalf("file content mismatch\nexpected: %x\ngot:      %x", encryptedFile, raw)
 		}
 	})
 
 	t.Run("should store file with lowercased name", func(t *testing.T) {
 		store := initializeStore(t)
 
-		secret := domain.EncryptedSecret{
-			Salt:  makeSalt(),
-			Nonce: makeNonce(),
-			Data:  []byte("data"),
-		}
+		encryptedFile := marshalOrFail(t, makeSalt(), makeNonce(), []byte("data"))
 
-		err := store.SaveFile(secret, "MySecret")
+		err := store.SaveFile(encryptedFile, "MySecret")
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -363,8 +357,8 @@ func TestSaveFile(t *testing.T) {
 		salt := makeSalt()
 		nonce := makeNonce()
 
-		first := domain.EncryptedSecret{Salt: salt, Nonce: nonce, Data: []byte("first")}
-		second := domain.EncryptedSecret{Salt: salt, Nonce: nonce, Data: []byte("second")}
+		first := marshalOrFail(t, salt, nonce, []byte("first"))
+		second := marshalOrFail(t, salt, nonce, []byte("second"))
 
 		if err := store.SaveFile(first, "overwrite"); err != nil {
 			t.Fatalf("first save failed: %v", err)
@@ -390,13 +384,9 @@ func TestSaveFile(t *testing.T) {
 	t.Run("should clean up temp file after success", func(t *testing.T) {
 		store := initializeStore(t)
 
-		secret := domain.EncryptedSecret{
-			Salt:  makeSalt(),
-			Nonce: makeNonce(),
-			Data:  []byte("data"),
-		}
+		encryptedFile := marshalOrFail(t, makeSalt(), makeNonce(), []byte("data"))
 
-		if err := store.SaveFile(secret, "cleanup"); err != nil {
+		if err := store.SaveFile(encryptedFile, "cleanup"); err != nil {
 			t.Fatalf("save failed: %v", err)
 		}
 
@@ -416,13 +406,9 @@ func TestSaveFile(t *testing.T) {
 		nonce := makeNonce()
 		data := []byte("roundtrip-data")
 
-		secret := domain.EncryptedSecret{
-			Salt:  salt,
-			Nonce: nonce,
-			Data:  data,
-		}
+		encryptedFile := marshalOrFail(t, salt, nonce, data)
 
-		if err := store.SaveFile(secret, "roundtrip"); err != nil {
+		if err := store.SaveFile(encryptedFile, "roundtrip"); err != nil {
 			t.Fatalf("save failed: %v", err)
 		}
 
@@ -431,28 +417,17 @@ func TestSaveFile(t *testing.T) {
 			t.Fatalf("get failed: %v", err)
 		}
 
-		var expected []byte
-		expected = append(expected, []byte("MSK")...)
-		expected = append(expected, 0x01)
-		expected = append(expected, salt[:]...)
-		expected = append(expected, nonce[:]...)
-		expected = append(expected, data...)
-
-		if !bytes.Equal(got, expected) {
-			t.Fatalf("roundtrip mismatch\nexpected: %x\ngot:      %x", expected, got)
+		if !bytes.Equal(got, encryptedFile) {
+			t.Fatalf("roundtrip mismatch\nexpected: %x\ngot:      %x", encryptedFile, got)
 		}
 	})
 
 	t.Run("should return error for unwritable directory", func(t *testing.T) {
 		store := Store{dir: filepath.Join(t.TempDir(), "no", "such", "deep", "path")}
 
-		secret := domain.EncryptedSecret{
-			Salt:  makeSalt(),
-			Nonce: makeNonce(),
-			Data:  []byte("data"),
-		}
+		encryptedFile := marshalOrFail(t, makeSalt(), makeNonce(), []byte("data"))
 
-		err := store.SaveFile(secret, "fail")
+		err := store.SaveFile(encryptedFile, "fail")
 		if err == nil {
 			t.Fatal("expected an error for unwritable directory, got nil")
 		}
@@ -463,13 +438,9 @@ func TestSaveFile(t *testing.T) {
 		salt := makeSalt()
 		nonce := makeNonce()
 
-		secret := domain.EncryptedSecret{
-			Salt:  salt,
-			Nonce: nonce,
-			Data:  nil,
-		}
+		encryptedFile := marshalOrFail(t, salt, nonce, nil)
 
-		if err := store.SaveFile(secret, "emptydata"); err != nil {
+		if err := store.SaveFile(encryptedFile, "emptydata"); err != nil {
 			t.Fatalf("save failed: %v", err)
 		}
 
@@ -478,19 +449,8 @@ func TestSaveFile(t *testing.T) {
 			t.Fatalf("failed to read file: %v", err)
 		}
 
-		expectedLen := 3 + 1 + 16 + 12
-		if len(raw) != expectedLen {
-			t.Fatalf("expected file length %d, got %d", expectedLen, len(raw))
-		}
-
-		var expected []byte
-		expected = append(expected, []byte("MSK")...)
-		expected = append(expected, 0x01)
-		expected = append(expected, salt[:]...)
-		expected = append(expected, nonce[:]...)
-
-		if !bytes.Equal(raw, expected) {
-			t.Fatalf("file content mismatch\nexpected: %x\ngot:      %x", expected, raw)
+		if !bytes.Equal(raw, encryptedFile) {
+			t.Fatalf("file content mismatch\nexpected: %x\ngot:      %x", encryptedFile, raw)
 		}
 	})
 }
