@@ -29,14 +29,12 @@ var validPattern = regexp.MustCompile(`^[A-Za-z0-9_\-]+$`)
 
 func ValidateMasterPass(pass []byte) error {
 	if len(pass) < 8 {
-		return errors.New("master pass cannot be smaller then 8 characters")
+		return errors.New("master password must be at least 8 characters")
 	}
 
 	if len(pass) > 255 {
 		return errors.New("master pass cannot exceed 255 characters")
 	}
-
-	// TODO: include stronger password validations
 
 	return nil
 }

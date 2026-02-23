@@ -16,7 +16,10 @@ func TestMarshalUnmarshalSecret(t *testing.T) {
 		}
 
 		data := MarshalSecret(secret)
-		got := UnmarshalSecret(data)
+		got, err := UnmarshalSecret(data)
+		if err != nil {
+			t.Fatalf("failed to unmarshal secret: %v", err)
+		}
 
 		if got.Name != secret.Name {
 			t.Fatalf("expected name %q, got %q", secret.Name, got.Name)
@@ -34,7 +37,10 @@ func TestMarshalUnmarshalSecret(t *testing.T) {
 		}
 
 		data := MarshalSecret(secret)
-		got := UnmarshalSecret(data)
+		got, err := UnmarshalSecret(data)
+		if err != nil {
+			t.Fatalf("failed to unmarshal secret: %v", err)
+		}
 
 		if got.Name != "" {
 			t.Fatalf("expected empty name, got %q", got.Name)
@@ -52,7 +58,10 @@ func TestMarshalUnmarshalSecret(t *testing.T) {
 		}
 
 		data := MarshalSecret(secret)
-		got := UnmarshalSecret(data)
+		got, err := UnmarshalSecret(data)
+		if err != nil {
+			t.Fatalf("failed to unmarshal secret: %v", err)
+		}
 
 		if got.Name != secret.Name {
 			t.Fatalf("expected name %q, got %q", secret.Name, got.Name)
@@ -70,7 +79,10 @@ func TestMarshalUnmarshalSecret(t *testing.T) {
 		}
 
 		data := MarshalSecret(secret)
-		got := UnmarshalSecret(data)
+		got, err := UnmarshalSecret(data)
+		if err != nil {
+			t.Fatalf("failed to unmarshal secret: %v", err)
+		}
 
 		if !bytes.Equal(got.Password, secret.Password) {
 			t.Fatalf("expected password %v, got %v", secret.Password, got.Password)

@@ -12,8 +12,8 @@ import (
 	"golang.org/x/term"
 )
 
-var ErrInvalidValue = errors.New("Invalid master key.")
-var ErrConfirmationMatch = errors.New("Invalid master key confirmation.")
+var ErrEmptyInput = errors.New("input cannot be empty")
+var ErrConfirmationMatch = errors.New("invalid master key confirmation")
 
 func PromptSafeValue(label string) ([]byte, error) {
 	logger.PrintInfo(label)
@@ -25,7 +25,7 @@ func PromptSafeValue(label string) ([]byte, error) {
 	}
 
 	if len(safeValue) == 0 {
-		return nil, ErrInvalidValue
+		return nil, ErrEmptyInput
 	}
 
 	return safeValue, nil

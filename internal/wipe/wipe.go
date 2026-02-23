@@ -1,7 +1,13 @@
 package wipe
 
-func Bytes(b []byte) {
-	for i := range b {
-		b[i] = 0
+import (
+	"runtime"
+)
+
+func Bytes(buf []byte) {
+	for i := range buf {
+		buf[i] = 0
 	}
+
+	runtime.KeepAlive(buf)
 }

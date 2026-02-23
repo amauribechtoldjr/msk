@@ -39,12 +39,7 @@ func (s *MSKService) DeleteSecret(name string) error {
 		return ErrSecretNotFound
 	}
 
-	err := s.repo.DeleteFile(name)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.repo.DeleteFile(name)
 }
 
 func (s *MSKService) AddSecret(name string, rawP []byte) error {

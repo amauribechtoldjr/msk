@@ -55,26 +55,41 @@ func MarshalSecret(secret domain.Secret) []byte {
 	return buf
 }
 
-func UnmarshalSecret(data []byte) domain.Secret {
+func UnmarshalSecret(data []byte) (domain.Secret, error) {
 	defer wipe.Bytes(data)
 
 	secret := &domain.Secret{}
-
 	offset := 0
+
+	if len(data) < MSK_NAME_LENGTH_SIZE {
+		return domain.Secret{}, ErrCorruptedFile
+	}
 
 	nameLen := int(binary.BigEndian.Uint16(data[offset:]))
 	offset += MSK_NAME_LENGTH_SIZE
 
+	if offset+nameLen > len(data) {
+		return domain.Secret{}, ErrCorruptedFile
+	}
+
 	secret.Name = string(data[offset : offset+nameLen])
 	offset += nameLen
+
+	if offset+MSK_PASSWORD_LENGTH_SIZE > len(data) {
+		return domain.Secret{}, ErrCorruptedFile
+	}
 
 	passLen := int(binary.BigEndian.Uint16(data[offset:]))
 	offset += MSK_PASSWORD_LENGTH_SIZE
 
+	if offset+passLen > len(data) {
+		return domain.Secret{}, ErrCorruptedFile
+	}
+
 	secret.Password = make([]byte, passLen)
 	copy(secret.Password, data[offset:offset+passLen])
 
-	return *secret
+	return *secret, nil
 }
 
 func MarshalFile(salt, nonce, data []byte) ([]byte, error) {

@@ -4,14 +4,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/amauribechtoldjr/msk/internal/app"
 	"github.com/amauribechtoldjr/msk/internal/logger"
 	"github.com/amauribechtoldjr/msk/internal/validator"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/spf13/cobra"
 )
 
-func NewAddCmd(service *app.MSKService) *cobra.Command {
+func NewAddCmd(holder *ServiceHolder) *cobra.Command {
 	addCmd := &cobra.Command{
 		Use:           "add <name>",
 		Aliases:       []string{"a"},
@@ -19,21 +18,6 @@ func NewAddCmd(service *app.MSKService) *cobra.Command {
 		Long:          ``,
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			mk, err := PromptMasterPassword(false)
-			if err != nil {
-				return err
-			}
-
-			service.ConfigMK(mk)
-
-			return nil
-		},
-		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-			service.DestroyMK()
-
-			return nil
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("password name is required")
@@ -43,7 +27,7 @@ func NewAddCmd(service *app.MSKService) *cobra.Command {
 
 			err := validator.Validate(name)
 			if err != nil {
-				return fmt.Errorf("invalid password name")
+				return fmt.Errorf("invalid password name: %v", err)
 			}
 
 			password, err := PromptSafeValue("Enter password:")
@@ -52,7 +36,7 @@ func NewAddCmd(service *app.MSKService) *cobra.Command {
 			}
 			defer wipe.Bytes(password)
 
-			err = service.AddSecret(name, password)
+			err = holder.Service.AddSecret(name, password)
 			if err != nil {
 				return fmt.Errorf("failed to add secret: %w", err)
 			}

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/amauribechtoldjr/msk/internal/app"
 	clip "github.com/amauribechtoldjr/msk/internal/clip"
 	"github.com/amauribechtoldjr/msk/internal/logger"
 	"github.com/amauribechtoldjr/msk/internal/validator"
@@ -12,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewGetCmd(service *app.MSKService) *cobra.Command {
+func NewGetCmd(holder *ServiceHolder) *cobra.Command {
 	getCmd := &cobra.Command{
 		Use:           "get <name>",
 		Aliases:       []string{"g"},
@@ -20,21 +19,6 @@ func NewGetCmd(service *app.MSKService) *cobra.Command {
 		Long:          ``,
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			mk, err := PromptMasterPassword(false)
-			if err != nil {
-				return err
-			}
-
-			service.ConfigMK(mk)
-
-			return nil
-		},
-		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-			service.DestroyMK()
-
-			return nil
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("password name is required")
@@ -46,7 +30,7 @@ func NewGetCmd(service *app.MSKService) *cobra.Command {
 				return fmt.Errorf("invalid password name: %w", err)
 			}
 
-			password, err := service.GetSecret(name)
+			password, err := holder.Service.GetSecret(name)
 			if err != nil {
 				return fmt.Errorf("failed to get password: %w", err)
 			}

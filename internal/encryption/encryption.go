@@ -75,7 +75,10 @@ func (a *ArgonCrypt) Decrypt(cipherData []byte) (domain.Secret, error) {
 	}
 	defer wipe.Bytes(fileBytes)
 
-	secret := format.UnmarshalSecret(fileBytes)
+	secret, err := format.UnmarshalSecret(fileBytes)
+	if err != nil {
+		return domain.Secret{}, err
+	}
 
 	return secret, nil
 }

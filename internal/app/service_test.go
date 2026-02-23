@@ -175,6 +175,64 @@ func TestDeleteSecret(t *testing.T) {
 			t.Fatal("expected error when deleting nonexistent secret")
 		}
 	})
+
+}
+
+func TestUpdateSecret(t *testing.T) {
+	t.Run("should update secret successfully", func(t *testing.T) {
+		service := newTestService(t, "master-key")
+
+		err := service.AddSecret("to-update", []byte("old-pass"))
+		if err != nil {
+			t.Fatalf("add failed: %v", err)
+		}
+
+		err = service.UpdateSecret("to-update", []byte("new-pass"))
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		password, err := service.GetSecret("to-update")
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		if !reflect.DeepEqual(password, []byte("new-pass")) {
+			t.Fatalf("expected password %q, got %q", "new-pass", password)
+		}
+	})
+
+	t.Run("should return ErrSecretNotFound when secret does not exist", func(t *testing.T) {
+		service := newTestService(t, "master-key")
+
+		err := service.UpdateSecret("nonexistent", []byte("pass"))
+		if !errors.Is(err, ErrSecretNotFound) {
+			t.Fatalf("expected ErrSecretNotFound, got %v", err)
+		}
+	})
+
+	t.Run("should not return old password after update", func(t *testing.T) {
+		service := newTestService(t, "master-key")
+
+		err := service.AddSecret("to-update", []byte("old-pass"))
+		if err != nil {
+			t.Fatalf("add failed: %v", err)
+		}
+
+		err = service.UpdateSecret("to-update", []byte("new-pass"))
+		if err != nil {
+			t.Fatalf("update failed: %v", err)
+		}
+
+		password, err := service.GetSecret("to-update")
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		if reflect.DeepEqual(password, []byte("old-pass")) {
+			t.Fatal("password should have changed after update")
+		}
+	})
 }
 
 func TestListSecrets(t *testing.T) {

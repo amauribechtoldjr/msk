@@ -1,4 +1,4 @@
-# 🔐 MSK – Secure Local Password Manager
+# MSK – Lightweight Local Password Manager
 
 **MSK** is a lightweight password manager designed to keep all your credentials **securely stored on your own computer**, without ever exposing them to the internet.
 
@@ -9,7 +9,7 @@ To maximize your security:
 - Memorize your master password, **or**
 - Store it in a safe place **outside your computer**
 
-As long as your master password remains secret, your data stays protected. 🚀
+As long as your master password remains secret, your data stays protected.
 
 ## Installation
 
@@ -18,6 +18,18 @@ As long as your master password remains secret, your data stays protected. 🚀
 - Add to your environment variables
 
 ## Getting Started
+
+Before using MSK, you need to initialize it by running the config command. This sets your master password and vault path (where encrypted files are stored):
+
+```
+msk config
+```
+
+You'll be prompted to choose a vault path (press Enter to use the default `~/.msk/vault`) and set your master password. The config is encrypted and stored in your system's config directory.
+
+You can re-run `msk config` at any time to change your vault path or master password.
+
+## Usage
 
 To save a new password:
 
