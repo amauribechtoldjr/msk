@@ -50,11 +50,9 @@ func TestNewStore(t *testing.T) {
 		storePath := filepath.Join(tempFile.Name(), "subdir")
 
 		_, err = NewStore(storePath)
-		if err != nil {
-			return
+		if err == nil {
+			t.Fatal("expected error when creating store with path collision, got nil")
 		}
-
-		t.Fatalf("store path created incorrectly: %v", err)
 	})
 }
 

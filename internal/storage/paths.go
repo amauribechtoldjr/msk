@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func (s *Store) secretPath(name string) string {
+func (s *Store) getFilePath(name string) string {
 	return filepath.Join(
 		s.dir,
 		strings.ToLower(name)+".msk",

@@ -104,6 +104,42 @@ func TestMarshalUnmarshalSecret(t *testing.T) {
 	})
 }
 
+func TestUnmarshalSecretCorrupted(t *testing.T) {
+	t.Run("should return ErrCorruptedFile for empty input", func(t *testing.T) {
+		_, err := UnmarshalSecret([]byte{})
+		if err != ErrCorruptedFile {
+			t.Fatalf("expected ErrCorruptedFile, got %v", err)
+		}
+	})
+
+	t.Run("should return ErrCorruptedFile when name length overflows data", func(t *testing.T) {
+		// name length says 100 but only 2 bytes of data follow
+		data := []byte{0x00, 0x64, 0x41, 0x42}
+		_, err := UnmarshalSecret(data)
+		if err != ErrCorruptedFile {
+			t.Fatalf("expected ErrCorruptedFile, got %v", err)
+		}
+	})
+
+	t.Run("should return ErrCorruptedFile when password length is missing", func(t *testing.T) {
+		// name length = 2, name = "ab", then no room for password length
+		data := []byte{0x00, 0x02, 0x61, 0x62}
+		_, err := UnmarshalSecret(data)
+		if err != ErrCorruptedFile {
+			t.Fatalf("expected ErrCorruptedFile, got %v", err)
+		}
+	})
+
+	t.Run("should return ErrCorruptedFile when password length overflows data", func(t *testing.T) {
+		// name length = 1, name = "a", password length = 99, no password bytes
+		data := []byte{0x00, 0x01, 0x61, 0x00, 0x63}
+		_, err := UnmarshalSecret(data)
+		if err != ErrCorruptedFile {
+			t.Fatalf("expected ErrCorruptedFile, got %v", err)
+		}
+	})
+}
+
 func TestMarshalSecretFormat(t *testing.T) {
 	t.Run("should produce correct binary layout", func(t *testing.T) {
 		secret := domain.Secret{
