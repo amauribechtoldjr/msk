@@ -9,20 +9,10 @@ import (
 	"github.com/amauribechtoldjr/msk/internal/vault"
 )
 
-func setupTestSession(t *testing.T) {
-	t.Helper()
-	tmpDir := t.TempDir()
-	sessionPathOverride = filepath.Join(tmpDir, "session")
-	t.Cleanup(func() { sessionPathOverride = "" })
-}
-
 func newTestSession(t *testing.T) *Session {
 	t.Helper()
-	s, err := New()
-	if err != nil {
-		t.Fatalf("New() failed: %v", err)
-	}
-	return s
+	tmpDir := t.TempDir()
+	return &Session{path: filepath.Join(tmpDir, "session.msk")}
 }
 
 func newTestVault(t *testing.T, masterKey string) vault.Vault {
@@ -34,7 +24,6 @@ func newTestVault(t *testing.T, masterKey string) vault.Vault {
 
 func TestNew(t *testing.T) {
 	t.Run("returns Session with resolved path", func(t *testing.T) {
-		setupTestSession(t)
 		s, err := New()
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
@@ -50,7 +39,6 @@ func TestNew(t *testing.T) {
 
 func TestCreateAndLoad(t *testing.T) {
 	t.Run("round-trip: Create and Load succeed", func(t *testing.T) {
-		setupTestSession(t)
 		s := newTestSession(t)
 		v := newTestVault(t, "this-is-a-32-byte-master-key-!!")
 
@@ -62,7 +50,7 @@ func TestCreateAndLoad(t *testing.T) {
 			t.Fatal("expected non-empty token")
 		}
 
-		got, err := s.Load(token)
+		got, err := s.Load(token, v)
 		if err != nil {
 			t.Fatalf("Load failed: %v", err)
 		}
@@ -72,7 +60,6 @@ func TestCreateAndLoad(t *testing.T) {
 	})
 
 	t.Run("Create overwrites previous session file", func(t *testing.T) {
-		setupTestSession(t)
 		s := newTestSession(t)
 		v1 := newTestVault(t, "first-master-key-bytes-here-32!!")
 
@@ -81,26 +68,25 @@ func TestCreateAndLoad(t *testing.T) {
 		v2 := newTestVault(t, "second-master-key-bytes-here-32!")
 		token2, _ := s.Create(v2)
 
-		_, err := s.Load(token2)
+		_, err := s.Load(token2, v2)
 		if err != nil {
 			t.Fatalf("Load with token2 failed: %v", err)
 		}
 
-		_, err = s.Load(token1)
+		_, err = s.Load(token1, v1)
 		if err == nil {
 			t.Fatal("expected Load with stale token1 to fail")
 		}
 	})
 
 	t.Run("Load returns error for wrong token", func(t *testing.T) {
-		setupTestSession(t)
 		s := newTestSession(t)
 		v := newTestVault(t, "master-key-for-wrong-token-test!")
 
 		_, _ = s.Create(v)
 
 		wrongToken := "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899"
-		_, err := s.Load(wrongToken)
+		_, err := s.Load(wrongToken, v)
 		if err == nil {
 			t.Fatal("expected error with wrong token")
 		}
@@ -109,7 +95,6 @@ func TestCreateAndLoad(t *testing.T) {
 
 func TestCreateTokenFormat(t *testing.T) {
 	t.Run("token is 64-char hex string", func(t *testing.T) {
-		setupTestSession(t)
 		s := newTestSession(t)
 		v := newTestVault(t, "any-mk-bytes-32-bytes-long-here!")
 
@@ -120,7 +105,6 @@ func TestCreateTokenFormat(t *testing.T) {
 	})
 
 	t.Run("consecutive Create calls produce different tokens", func(t *testing.T) {
-		setupTestSession(t)
 		s := newTestSession(t)
 		v := newTestVault(t, "any-mk-bytes-32-bytes-long-here!")
 
@@ -134,7 +118,6 @@ func TestCreateTokenFormat(t *testing.T) {
 
 func TestExpiry(t *testing.T) {
 	t.Run("Load returns ErrSessionExpired for expired session", func(t *testing.T) {
-		setupTestSession(t)
 		s := newTestSession(t)
 		v := newTestVault(t, "master-key-expiry-test-32-bytes!")
 
@@ -147,7 +130,7 @@ func TestExpiry(t *testing.T) {
 		}
 		os.WriteFile(s.path, data, 0o600)
 
-		_, err := s.Load(token)
+		_, err := s.Load(token, v)
 		if err != ErrSessionExpired {
 			t.Fatalf("expected ErrSessionExpired, got %v", err)
 		}
@@ -156,7 +139,6 @@ func TestExpiry(t *testing.T) {
 
 func TestRefresh(t *testing.T) {
 	t.Run("extends the expiry timestamp", func(t *testing.T) {
-		setupTestSession(t)
 		s := newTestSession(t)
 		v := newTestVault(t, "master-key-refresh-test-32-byt!!")
 
@@ -185,7 +167,6 @@ func TestRefresh(t *testing.T) {
 	})
 
 	t.Run("preserves encrypted data after refresh", func(t *testing.T) {
-		setupTestSession(t)
 		s := newTestSession(t)
 		v := newTestVault(t, "master-key-refresh-preserve-32!!")
 
@@ -193,14 +174,13 @@ func TestRefresh(t *testing.T) {
 
 		s.Refresh()
 
-		_, err := s.Load(token)
+		_, err := s.Load(token, v)
 		if err != nil {
 			t.Fatalf("Load after Refresh failed: %v", err)
 		}
 	})
 
 	t.Run("returns error when no session file", func(t *testing.T) {
-		setupTestSession(t)
 		s := newTestSession(t)
 		if err := s.Refresh(); err == nil {
 			t.Fatal("expected error")
@@ -210,7 +190,6 @@ func TestRefresh(t *testing.T) {
 
 func TestDestroy(t *testing.T) {
 	t.Run("removes the session file", func(t *testing.T) {
-		setupTestSession(t)
 		s := newTestSession(t)
 		v := newTestVault(t, "master-key-destroy-test-32-byte!")
 
@@ -222,59 +201,9 @@ func TestDestroy(t *testing.T) {
 	})
 
 	t.Run("idempotent when file does not exist", func(t *testing.T) {
-		setupTestSession(t)
 		s := newTestSession(t)
 		if err := s.Destroy(); err != nil {
 			t.Fatalf("Destroy on nonexistent file: %v", err)
-		}
-	})
-}
-
-func TestIsActive(t *testing.T) {
-	t.Run("true for fresh session", func(t *testing.T) {
-		setupTestSession(t)
-		s := newTestSession(t)
-		v := newTestVault(t, "master-key-isactive-test-32-by!!")
-
-		token, _ := s.Create(v)
-		if !s.IsActive(token) {
-			t.Fatal("expected true")
-		}
-	})
-
-	t.Run("false when no session file", func(t *testing.T) {
-		setupTestSession(t)
-		s := newTestSession(t)
-		if s.IsActive("anytoken") {
-			t.Fatal("expected false")
-		}
-	})
-
-	t.Run("false when expired", func(t *testing.T) {
-		setupTestSession(t)
-		s := newTestSession(t)
-		v := newTestVault(t, "master-key-isactive-expire-32!!!")
-
-		token, _ := s.Create(v)
-		data, _ := os.ReadFile(s.path)
-		pastExpiry := int64(1)
-		for i := 0; i < 8; i++ {
-			data[12+i] = byte(pastExpiry >> (56 - 8*i))
-		}
-		os.WriteFile(s.path, data, 0o600)
-		if s.IsActive(token) {
-			t.Fatal("expected false for expired")
-		}
-	})
-
-	t.Run("false for wrong token", func(t *testing.T) {
-		setupTestSession(t)
-		s := newTestSession(t)
-		v := newTestVault(t, "master-key-isactive-wrong-token!")
-
-		_, _ = s.Create(v)
-		if s.IsActive("0000000000000000000000000000000000000000000000000000000000000000") {
-			t.Fatal("expected false for wrong token")
 		}
 	})
 }

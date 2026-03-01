@@ -19,6 +19,7 @@ type Vault interface {
 	ConfigMK(mk []byte)
 	DestroyMK()
 	CreateSession(token []byte) (nonce []byte, cipherData []byte, err error)
+	LoadSession(token []byte, nonce []byte, cipherData []byte) ([]byte, error)
 }
 
 type MSKVault struct {
@@ -76,7 +77,7 @@ func (a *MSKVault) DecryptSecret(cipherData []byte) (domain.Secret, error) {
 }
 
 func (a *MSKVault) EncryptSecret(secret domain.Secret) ([]byte, error) {
-	salt, err := randomBytes(format.MSK_SALT_SIZE)
+	salt, err := format.RandomBytes(format.MSK_SALT_SIZE)
 	if err != nil {
 		return nil, err
 	}
@@ -136,6 +137,22 @@ func (a *MSKVault) CreateSession(token []byte) (nonce []byte, cipherData []byte,
 	return nonce, cipherData, nil
 }
 
+func (a *MSKVault) LoadSession(token []byte, nonce []byte, cipherData []byte) ([]byte, error) {
+	sha256 := &SHA256{}
+	key, err := sha256.DeriveKey(token)
+	if err != nil {
+		return nil, err
+	}
+	defer wipe.Bytes(key)
+
+	mk, err := openGCM(nonce, key, cipherData)
+	if err != nil {
+		return nil, ErrDecryption
+	}
+
+	return mk, nil
+}
+
 func sealGCM(nonceSize int, key []byte, fileBytes []byte) (nonce []byte, cipherData []byte, err error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -147,7 +164,7 @@ func sealGCM(nonceSize int, key []byte, fileBytes []byte) (nonce []byte, cipherD
 		return nil, nil, err
 	}
 
-	nonce, err = randomBytes(nonceSize)
+	nonce, err = format.RandomBytes(nonceSize)
 	if err != nil {
 		return nil, nil, err
 	}

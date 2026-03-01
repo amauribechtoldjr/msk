@@ -1,10 +1,6 @@
 package session
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -12,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/amauribechtoldjr/msk/internal/format"
 	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 )
@@ -22,26 +19,23 @@ var (
 	ErrSessionNotFound = errors.New("session file not found")
 )
 
-var sessionPathOverride string
-
 type Session struct {
 	path string
 }
 
 func New() (*Session, error) {
-	if sessionPathOverride != "" {
-		return &Session{path: sessionPathOverride}, nil
-	}
-
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return nil, err
 	}
-	return &Session{path: filepath.Join(configDir, "msk", "session")}, nil
+
+	return &Session{
+		path: filepath.Join(configDir, "msk", "session.msk"),
+	}, nil
 }
 
 func (s *Session) Create(v vault.Vault) (string, error) {
-	tokenBytes, err := randomBytes(vault.SESSION_TOKEN_SIZE)
+	tokenBytes, err := format.RandomBytes(vault.SESSION_TOKEN_SIZE)
 	if err != nil {
 		return "", err
 	}
@@ -77,7 +71,7 @@ func (s *Session) Create(v vault.Vault) (string, error) {
 	return token, nil
 }
 
-func (s *Session) Load(token string) ([]byte, error) {
+func (s *Session) Load(token string, v vault.Vault) ([]byte, error) {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -96,28 +90,15 @@ func (s *Session) Load(token string) ([]byte, error) {
 	}
 
 	tokenBytes, err := hex.DecodeString(token)
-
 	if err != nil || len(tokenBytes) != vault.SESSION_TOKEN_SIZE {
 		return nil, ErrSessionInvalid
 	}
 	defer wipe.Bytes(tokenBytes)
 
-	sessionKey := deriveKey(tokenBytes)
-	defer wipe.Bytes(sessionKey)
-
 	nonce := data[0:vault.SESSION_NONCE_SIZE]
 	ciphertext := data[vault.SESSION_HEADER_SIZE:]
-	block, err := aes.NewCipher(sessionKey)
-	if err != nil {
-		return nil, ErrSessionInvalid
-	}
 
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, ErrSessionInvalid
-	}
-
-	mk, err := gcm.Open(nil, nonce, ciphertext, nil)
+	mk, err := v.LoadSession(tokenBytes, nonce, ciphertext)
 	if err != nil {
 		return nil, ErrSessionInvalid
 	}
@@ -159,25 +140,4 @@ func (s *Session) Destroy() error {
 		return err
 	}
 	return nil
-}
-
-func (s *Session) IsActive(token string) bool {
-	_, err := s.Load(token)
-	return err == nil
-}
-
-func deriveKey(tokenBytes []byte) []byte {
-	sum := sha256.Sum256(tokenBytes)
-	key := make([]byte, 32)
-	copy(key, sum[:])
-	return key
-}
-
-func randomBytes(n int) ([]byte, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
 }

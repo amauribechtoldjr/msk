@@ -24,7 +24,12 @@ func NewUnlockCmd(vault vault.Vault) *cobra.Command {
 			vault.ConfigMK(mk)
 			defer vault.DestroyMK()
 
-			if _, err := config.Load(vault); err != nil {
+			conf, err := config.NewConfig("")
+			if err != nil {
+				return err
+			}
+
+			if _, err := conf.Load(vault); err != nil {
 				return fmt.Errorf("invalid master password: %w", err)
 			}
 

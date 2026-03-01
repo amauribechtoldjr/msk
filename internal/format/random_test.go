@@ -1,4 +1,4 @@
-package vault
+package format
 
 import (
 	"bytes"
@@ -7,11 +7,11 @@ import (
 
 func TestRandomBytes(t *testing.T) {
 	t.Run("should produce different bytes on each call", func(t *testing.T) {
-		a, err := randomBytes(32)
+		a, err := RandomBytes(32)
 		if err != nil {
 			t.Fatal(err)
 		}
-		b, err := randomBytes(32)
+		b, err := RandomBytes(32)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -24,7 +24,7 @@ func TestRandomBytes(t *testing.T) {
 		expectedSizes := []int{0, 12, 9, 16, 99, 9840}
 
 		for _, expectedSize := range expectedSizes {
-			bytesArray, err := randomBytes(expectedSize)
+			bytesArray, err := RandomBytes(expectedSize)
 			if err != nil {
 				t.Fatal("failed to create the bytes array")
 			}

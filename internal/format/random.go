@@ -1,8 +1,8 @@
-package vault
+package format
 
 import "crypto/rand"
 
-func randomBytes(n int) ([]byte, error) {
+func RandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
 	if err != nil {

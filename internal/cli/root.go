@@ -48,43 +48,35 @@ func NewMSKCmd(vault vault.Vault) *cobra.Command {
 				return nil
 			}
 
-			// Session-unlock fast path
+			var mk []byte
+			defer wipe.Bytes(mk)
+
 			if token := os.Getenv("MSK_SESSION"); token != "" {
-				sess, err := session.New()
-				if err == nil && sess.IsActive(token) {
-					mk, err := sess.Load(token)
-					if err == nil {
-						defer wipe.Bytes(mk)
-						vault.ConfigMK(mk)
-						_ = sess.Refresh()
-
-						vaultPath, err := config.Load(vault)
-						if err != nil {
-							vault.DestroyMK()
-							return err
-						}
-
-						store, err := storage.NewStore(vaultPath)
-						if err != nil {
-							vault.DestroyMK()
-							return err
-						}
-
-						holder.Service = app.NewMSKService(store, vault)
-						return nil
-					}
-					_ = sess.Destroy()
+				session, err := session.New()
+				if err != nil {
+					return err
 				}
-			}
 
-			mk, err := PromptMasterPassword(false)
-			if err != nil {
-				return err
+				mk, err = session.Load(token, vault)
+				if err != nil {
+					session.Destroy()
+					return err
+				}
+			} else {
+				mk, err = PromptMasterPassword(false)
+				if err != nil {
+					return err
+				}
 			}
 
 			vault.ConfigMK(mk)
 
-			vaultPath, err := config.Load(vault)
+			conf, err := config.NewConfig("")
+			if err != nil {
+				return err
+			}
+
+			vaultPath, err := conf.Load(vault)
 			if err != nil {
 				vault.DestroyMK()
 				return err

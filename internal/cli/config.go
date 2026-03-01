@@ -24,7 +24,22 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			exists, err := config.Exists()
+			conf, err := config.NewConfig("")
+			if err != nil {
+				return err
+			}
+
+			showConfig, err := cmd.Flags().GetBool("show")
+			if err != nil {
+				return err
+			}
+
+			if showConfig {
+				logger.PrintInfo(conf.Path)
+				return nil
+			}
+
+			exists, err := conf.Exists()
 			if err != nil {
 				return fmt.Errorf("failed to check config: %w", err)
 			}
@@ -43,7 +58,7 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 				}
 			}
 
-			defaultPath, err := config.DefaultVaultPath()
+			defaultPath, err := conf.DefaultVaultPath()
 			if err != nil {
 				return fmt.Errorf("failed to get default vault path: %w", err)
 			}
@@ -71,7 +86,7 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 
 			vault.ConfigMK(mk)
 
-			if err := config.Save(vault, vaultPath); err != nil {
+			if err := conf.Save(vault, vaultPath); err != nil {
 				return fmt.Errorf("failed to save config: %w", err)
 			}
 
@@ -79,6 +94,8 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 			return nil
 		},
 	}
+
+	configCmd.Flags().BoolP("show", "s", false, "Show config and session path")
 
 	return configCmd
 }

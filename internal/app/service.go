@@ -15,23 +15,23 @@ var (
 )
 
 type MSKService struct {
-	repo   storage.Repository
-	crypto vault.Vault
+	repo  storage.Repository
+	vault vault.Vault
 }
 
-func NewMSKService(r storage.Repository, c vault.Vault) *MSKService {
+func NewMSKService(r storage.Repository, v vault.Vault) *MSKService {
 	return &MSKService{
-		crypto: c,
-		repo:   r,
+		vault: v,
+		repo:  r,
 	}
 }
 
 func (s *MSKService) ConfigMK(mk []byte) {
-	s.crypto.ConfigMK(mk)
+	s.vault.ConfigMK(mk)
 }
 
 func (s *MSKService) DestroyMK() {
-	s.crypto.DestroyMK()
+	s.vault.DestroyMK()
 }
 
 func (s *MSKService) DeleteSecret(name string) error {
@@ -53,7 +53,7 @@ func (s *MSKService) AddSecret(name string, rawP []byte) error {
 	}
 	defer wipe.Bytes(secret.Password)
 
-	encryptionResult, err := s.crypto.EncryptSecret(secret)
+	encryptionResult, err := s.vault.EncryptSecret(secret)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (s *MSKService) UpdateSecret(name string, rawP []byte) error {
 	}
 	defer wipe.Bytes(secret.Password)
 
-	encryptionResult, err := s.crypto.EncryptSecret(secret)
+	encryptionResult, err := s.vault.EncryptSecret(secret)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (s *MSKService) GetSecret(name string) ([]byte, error) {
 		return nil, err
 	}
 
-	secretData, err := s.crypto.DecryptSecret(fileData)
+	secretData, err := s.vault.DecryptSecret(fileData)
 	if err != nil {
 		return nil, err
 	}
