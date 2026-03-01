@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
-	"github.com/amauribechtoldjr/msk/internal/encryption"
+	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 )
 
@@ -50,7 +50,7 @@ func Exists() (bool, error) {
 	return false, err
 }
 
-func Load(enc encryption.Encryption) (string, error) {
+func Load(vault vault.Vault) (string, error) {
 	path, err := Path()
 	if err != nil {
 		return "", err
@@ -64,7 +64,7 @@ func Load(enc encryption.Encryption) (string, error) {
 		return "", err
 	}
 
-	secret, err := enc.Decrypt(data)
+	secret, err := vault.DecryptSecret(data)
 	if err != nil {
 		return "", ErrInvalidConfig
 	}
@@ -77,7 +77,7 @@ func Load(enc encryption.Encryption) (string, error) {
 	return string(secret.Password), nil
 }
 
-func Save(enc encryption.Encryption, vaultPath string) error {
+func Save(vault vault.Vault, vaultPath string) error {
 	path, err := Path()
 	if err != nil {
 		return err
@@ -92,7 +92,7 @@ func Save(enc encryption.Encryption, vaultPath string) error {
 		Password: []byte(vaultPath),
 	}
 
-	encrypted, err := enc.Encrypt(secret)
+	encrypted, err := vault.EncryptSecret(secret)
 	if err != nil {
 		return err
 	}

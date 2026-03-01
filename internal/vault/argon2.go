@@ -1,4 +1,4 @@
-package encryption
+package vault
 
 import (
 	"errors"
@@ -10,7 +10,9 @@ import (
 var ErrInvalidSalt = errors.New("invalid salt size")
 var ErrInvalidPass = errors.New("invalid master pass")
 
-func getArgonDeriveKey(password, salt []byte) ([]byte, error) {
+type Argon2 struct{}
+
+func (a *Argon2) DeriveKey(password, salt []byte) ([]byte, error) {
 	if len(salt) != format.MSK_SALT_SIZE {
 		return nil, ErrInvalidSalt
 	}

@@ -3,9 +3,6 @@ main.exe
 
 bin/*
 
-vault
-vault/*
-
 .claude
 
 docs/plans

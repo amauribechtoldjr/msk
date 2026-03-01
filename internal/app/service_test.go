@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/amauribechtoldjr/msk/internal/encryption"
 	"github.com/amauribechtoldjr/msk/internal/storage"
+	encryption "github.com/amauribechtoldjr/msk/internal/vault"
 )
 
 func newTestService(t *testing.T, masterKey string) *MSKService {
@@ -17,7 +17,7 @@ func newTestService(t *testing.T, masterKey string) *MSKService {
 		t.Fatalf("failed to create store: %v", err)
 	}
 
-	crypto := encryption.NewArgonCrypt()
+	crypto := encryption.NewMSKVault()
 	crypto.ConfigMK([]byte(masterKey))
 
 	return NewMSKService(store, crypto)
@@ -90,7 +90,7 @@ func TestAddSecret(t *testing.T) {
 			t.Fatalf("failed to create store: %v", err)
 		}
 
-		crypto := encryption.NewArgonCrypt()
+		crypto := encryption.NewMSKVault()
 		service := NewMSKService(store, crypto)
 
 		err = service.AddSecret("secret", []byte("pass"))

@@ -7,9 +7,11 @@ import (
 	"github.com/amauribechtoldjr/msk/internal/app"
 	"github.com/amauribechtoldjr/msk/internal/build"
 	"github.com/amauribechtoldjr/msk/internal/config"
-	"github.com/amauribechtoldjr/msk/internal/encryption"
 	"github.com/amauribechtoldjr/msk/internal/logger"
+	"github.com/amauribechtoldjr/msk/internal/session"
 	"github.com/amauribechtoldjr/msk/internal/storage"
+	"github.com/amauribechtoldjr/msk/internal/vault"
+	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/spf13/cobra"
 )
 
@@ -17,9 +19,9 @@ type ServiceHolder struct {
 	Service *app.MSKService
 }
 
-var ignored_commands = []string{"version", "v", "help"}
+var ignored_commands = []string{"version", "v", "help", "unlock", "lock", "config"}
 
-func NewMSKCmd(enc encryption.Encryption) *cobra.Command {
+func NewMSKCmd(vault vault.Vault) *cobra.Command {
 	holder := &ServiceHolder{}
 
 	cmd := &cobra.Command{
@@ -46,26 +48,55 @@ func NewMSKCmd(enc encryption.Encryption) *cobra.Command {
 				return nil
 			}
 
+			// Session-unlock fast path
+			if token := os.Getenv("MSK_SESSION"); token != "" {
+				sess, err := session.New()
+				if err == nil && sess.IsActive(token) {
+					mk, err := sess.Load(token)
+					if err == nil {
+						defer wipe.Bytes(mk)
+						vault.ConfigMK(mk)
+						_ = sess.Refresh()
+
+						vaultPath, err := config.Load(vault)
+						if err != nil {
+							vault.DestroyMK()
+							return err
+						}
+
+						store, err := storage.NewStore(vaultPath)
+						if err != nil {
+							vault.DestroyMK()
+							return err
+						}
+
+						holder.Service = app.NewMSKService(store, vault)
+						return nil
+					}
+					_ = sess.Destroy()
+				}
+			}
+
 			mk, err := PromptMasterPassword(false)
 			if err != nil {
 				return err
 			}
 
-			enc.ConfigMK(mk)
+			vault.ConfigMK(mk)
 
-			vaultPath, err := config.Load(enc)
+			vaultPath, err := config.Load(vault)
 			if err != nil {
-				enc.DestroyMK()
+				vault.DestroyMK()
 				return err
 			}
 
 			store, err := storage.NewStore(vaultPath)
 			if err != nil {
-				enc.DestroyMK()
+				vault.DestroyMK()
 				return err
 			}
 
-			holder.Service = app.NewMSKService(store, enc)
+			holder.Service = app.NewMSKService(store, vault)
 			return nil
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
@@ -105,11 +136,17 @@ func NewMSKCmd(enc encryption.Encryption) *cobra.Command {
 	updateCmd := NewUpdateCmd(holder)
 	cmd.AddCommand(updateCmd)
 
-	configCmd := NewConfigCmd(enc)
+	configCmd := NewConfigCmd(vault)
 	cmd.AddCommand(configCmd)
 
 	versionCmd := NewVersionCmd()
 	cmd.AddCommand(versionCmd)
+
+	unlockCmd := NewUnlockCmd(vault)
+	cmd.AddCommand(unlockCmd)
+
+	lockCmd := NewLockCmd()
+	cmd.AddCommand(lockCmd)
 
 	cmd.Flags().BoolP("version", "v", false, "Show MSK current version")
 

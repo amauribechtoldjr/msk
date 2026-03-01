@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
-	"github.com/amauribechtoldjr/msk/internal/encryption"
 	"github.com/amauribechtoldjr/msk/internal/storage"
+	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 )
 
@@ -16,10 +16,10 @@ var (
 
 type MSKService struct {
 	repo   storage.Repository
-	crypto encryption.Encryption
+	crypto vault.Vault
 }
 
-func NewMSKService(r storage.Repository, c encryption.Encryption) *MSKService {
+func NewMSKService(r storage.Repository, c vault.Vault) *MSKService {
 	return &MSKService{
 		crypto: c,
 		repo:   r,

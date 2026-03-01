@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	"github.com/amauribechtoldjr/msk/internal/config"
-	"github.com/amauribechtoldjr/msk/internal/encryption"
 	"github.com/amauribechtoldjr/msk/internal/logger"
+	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/spf13/cobra"
 )
 
-func NewConfigCmd(enc encryption.Encryption) *cobra.Command {
+func NewConfigCmd(vault vault.Vault) *cobra.Command {
 	configCmd := &cobra.Command{
 		Use:           "config",
 		Short:         "Configure MSK vault path and master password.",
@@ -20,7 +20,7 @@ func NewConfigCmd(enc encryption.Encryption) *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-			enc.DestroyMK()
+			vault.DestroyMK()
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -69,9 +69,9 @@ func NewConfigCmd(enc encryption.Encryption) *cobra.Command {
 				return err
 			}
 
-			enc.ConfigMK(mk)
+			vault.ConfigMK(mk)
 
-			if err := config.Save(enc, vaultPath); err != nil {
+			if err := config.Save(vault, vaultPath); err != nil {
 				return fmt.Errorf("failed to save config: %w", err)
 			}
 

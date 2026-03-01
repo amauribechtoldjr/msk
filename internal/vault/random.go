@@ -1,4 +1,4 @@
-package encryption
+package vault
 
 import "crypto/rand"
 
