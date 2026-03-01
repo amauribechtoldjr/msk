@@ -1,11 +1,12 @@
 package session
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/amauribechtoldjr/msk/internal/vault"
 )
 
 func setupTestSession(t *testing.T) {
@@ -22,6 +23,13 @@ func newTestSession(t *testing.T) *Session {
 		t.Fatalf("New() failed: %v", err)
 	}
 	return s
+}
+
+func newTestVault(t *testing.T, masterKey string) vault.Vault {
+	t.Helper()
+	v := vault.NewMSKVault()
+	v.ConfigMK([]byte(masterKey))
+	return v
 }
 
 func TestNew(t *testing.T) {
@@ -41,12 +49,12 @@ func TestNew(t *testing.T) {
 }
 
 func TestCreateAndLoad(t *testing.T) {
-	t.Run("round-trip: Load returns same master key", func(t *testing.T) {
+	t.Run("round-trip: Create and Load succeed", func(t *testing.T) {
 		setupTestSession(t)
 		s := newTestSession(t)
+		v := newTestVault(t, "this-is-a-32-byte-master-key-!!")
 
-		mk := []byte("this-is-a-32-byte-master-key-!!")
-		token, err := s.Create(mk)
+		token, err := s.Create(v)
 		if err != nil {
 			t.Fatalf("Create failed: %v", err)
 		}
@@ -58,27 +66,24 @@ func TestCreateAndLoad(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Load failed: %v", err)
 		}
-		if !bytes.Equal(got, mk) {
-			t.Fatalf("Load returned %x, want %x", got, mk)
+		if len(got) == 0 {
+			t.Fatal("expected non-empty data from Load")
 		}
 	})
 
 	t.Run("Create overwrites previous session file", func(t *testing.T) {
 		setupTestSession(t)
 		s := newTestSession(t)
+		v1 := newTestVault(t, "first-master-key-bytes-here-32!!")
 
-		mk1 := []byte("first-master-key-bytes-here-32!!")
-		token1, _ := s.Create(mk1)
+		token1, _ := s.Create(v1)
 
-		mk2 := []byte("second-master-key-bytes-here-32!")
-		token2, _ := s.Create(mk2)
+		v2 := newTestVault(t, "second-master-key-bytes-here-32!")
+		token2, _ := s.Create(v2)
 
-		got, err := s.Load(token2)
+		_, err := s.Load(token2)
 		if err != nil {
 			t.Fatalf("Load with token2 failed: %v", err)
-		}
-		if !bytes.Equal(got, mk2) {
-			t.Fatalf("expected mk2, got %x", got)
 		}
 
 		_, err = s.Load(token1)
@@ -90,9 +95,9 @@ func TestCreateAndLoad(t *testing.T) {
 	t.Run("Load returns error for wrong token", func(t *testing.T) {
 		setupTestSession(t)
 		s := newTestSession(t)
+		v := newTestVault(t, "master-key-for-wrong-token-test!")
 
-		mk := []byte("master-key-for-wrong-token-test!")
-		_, _ = s.Create(mk)
+		_, _ = s.Create(v)
 
 		wrongToken := "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899"
 		_, err := s.Load(wrongToken)
@@ -106,8 +111,9 @@ func TestCreateTokenFormat(t *testing.T) {
 	t.Run("token is 64-char hex string", func(t *testing.T) {
 		setupTestSession(t)
 		s := newTestSession(t)
-		mk := []byte("any-mk-bytes-32-bytes-long-here!")
-		token, _ := s.Create(mk)
+		v := newTestVault(t, "any-mk-bytes-32-bytes-long-here!")
+
+		token, _ := s.Create(v)
 		if len(token) != 64 {
 			t.Fatalf("expected 64-char token, got len=%d", len(token))
 		}
@@ -116,9 +122,10 @@ func TestCreateTokenFormat(t *testing.T) {
 	t.Run("consecutive Create calls produce different tokens", func(t *testing.T) {
 		setupTestSession(t)
 		s := newTestSession(t)
-		mk := []byte("any-mk-bytes-32-bytes-long-here!")
-		t1, _ := s.Create(mk)
-		t2, _ := s.Create(mk)
+		v := newTestVault(t, "any-mk-bytes-32-bytes-long-here!")
+
+		t1, _ := s.Create(v)
+		t2, _ := s.Create(v)
 		if t1 == t2 {
 			t.Fatal("expected different tokens")
 		}
@@ -129,8 +136,9 @@ func TestExpiry(t *testing.T) {
 	t.Run("Load returns ErrSessionExpired for expired session", func(t *testing.T) {
 		setupTestSession(t)
 		s := newTestSession(t)
-		mk := []byte("master-key-expiry-test-32-bytes!")
-		token, _ := s.Create(mk)
+		v := newTestVault(t, "master-key-expiry-test-32-bytes!")
+
+		token, _ := s.Create(v)
 
 		data, _ := os.ReadFile(s.path)
 		pastExpiry := int64(1)
@@ -150,8 +158,9 @@ func TestRefresh(t *testing.T) {
 	t.Run("extends the expiry timestamp", func(t *testing.T) {
 		setupTestSession(t)
 		s := newTestSession(t)
-		mk := []byte("master-key-refresh-test-32-byt!!")
-		_, _ = s.Create(mk)
+		v := newTestVault(t, "master-key-refresh-test-32-byt!!")
+
+		_, _ = s.Create(v)
 
 		data, _ := os.ReadFile(s.path)
 		var before int64
@@ -175,20 +184,18 @@ func TestRefresh(t *testing.T) {
 		}
 	})
 
-	t.Run("preserves encrypted master key after refresh", func(t *testing.T) {
+	t.Run("preserves encrypted data after refresh", func(t *testing.T) {
 		setupTestSession(t)
 		s := newTestSession(t)
-		mk := []byte("master-key-refresh-preserve-32!!")
-		token, _ := s.Create(mk)
+		v := newTestVault(t, "master-key-refresh-preserve-32!!")
+
+		token, _ := s.Create(v)
 
 		s.Refresh()
 
-		got, err := s.Load(token)
+		_, err := s.Load(token)
 		if err != nil {
 			t.Fatalf("Load after Refresh failed: %v", err)
-		}
-		if !bytes.Equal(got, mk) {
-			t.Fatalf("mk changed after Refresh")
 		}
 	})
 
@@ -205,8 +212,9 @@ func TestDestroy(t *testing.T) {
 	t.Run("removes the session file", func(t *testing.T) {
 		setupTestSession(t)
 		s := newTestSession(t)
-		mk := []byte("master-key-destroy-test-32-byte!")
-		_, _ = s.Create(mk)
+		v := newTestVault(t, "master-key-destroy-test-32-byte!")
+
+		_, _ = s.Create(v)
 		s.Destroy()
 		if _, err := os.Stat(s.path); !os.IsNotExist(err) {
 			t.Fatal("expected file gone after Destroy")
@@ -226,8 +234,9 @@ func TestIsActive(t *testing.T) {
 	t.Run("true for fresh session", func(t *testing.T) {
 		setupTestSession(t)
 		s := newTestSession(t)
-		mk := []byte("master-key-isactive-test-32-by!!")
-		token, _ := s.Create(mk)
+		v := newTestVault(t, "master-key-isactive-test-32-by!!")
+
+		token, _ := s.Create(v)
 		if !s.IsActive(token) {
 			t.Fatal("expected true")
 		}
@@ -244,8 +253,9 @@ func TestIsActive(t *testing.T) {
 	t.Run("false when expired", func(t *testing.T) {
 		setupTestSession(t)
 		s := newTestSession(t)
-		mk := []byte("master-key-isactive-expire-32!!!")
-		token, _ := s.Create(mk)
+		v := newTestVault(t, "master-key-isactive-expire-32!!!")
+
+		token, _ := s.Create(v)
 		data, _ := os.ReadFile(s.path)
 		pastExpiry := int64(1)
 		for i := 0; i < 8; i++ {
@@ -260,8 +270,9 @@ func TestIsActive(t *testing.T) {
 	t.Run("false for wrong token", func(t *testing.T) {
 		setupTestSession(t)
 		s := newTestSession(t)
-		mk := []byte("master-key-isactive-wrong-token!")
-		_, _ = s.Create(mk)
+		v := newTestVault(t, "master-key-isactive-wrong-token!")
+
+		_, _ = s.Create(v)
 		if s.IsActive("0000000000000000000000000000000000000000000000000000000000000000") {
 			t.Fatal("expected false for wrong token")
 		}

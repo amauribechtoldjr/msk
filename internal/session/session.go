@@ -40,7 +40,7 @@ func New() (*Session, error) {
 	return &Session{path: filepath.Join(configDir, "msk", "session")}, nil
 }
 
-func (s *Session) Create(v vault.MSKVault) (string, error) {
+func (s *Session) Create(v vault.Vault) (string, error) {
 	tokenBytes, err := randomBytes(vault.SESSION_TOKEN_SIZE)
 	if err != nil {
 		return "", err
@@ -49,7 +49,7 @@ func (s *Session) Create(v vault.MSKVault) (string, error) {
 
 	token := hex.EncodeToString(tokenBytes)
 
-	nonce, cipherMkData, err := v.CreateSession()
+	nonce, cipherMkData, err := v.CreateSession(tokenBytes)
 	if err != nil {
 		return "", err
 	}

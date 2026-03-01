@@ -53,7 +53,7 @@ func (s *MSKService) AddSecret(name string, rawP []byte) error {
 	}
 	defer wipe.Bytes(secret.Password)
 
-	encryptionResult, err := s.crypto.Encrypt(secret)
+	encryptionResult, err := s.crypto.EncryptSecret(secret)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (s *MSKService) UpdateSecret(name string, rawP []byte) error {
 	}
 	defer wipe.Bytes(secret.Password)
 
-	encryptionResult, err := s.crypto.Encrypt(secret)
+	encryptionResult, err := s.crypto.EncryptSecret(secret)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (s *MSKService) GetSecret(name string) ([]byte, error) {
 		return nil, err
 	}
 
-	secretData, err := s.crypto.Decrypt(fileData)
+	secretData, err := s.crypto.DecryptSecret(fileData)
 	if err != nil {
 		return nil, err
 	}

@@ -18,7 +18,7 @@ type Vault interface {
 	DecryptSecret(cipherData []byte) (domain.Secret, error)
 	ConfigMK(mk []byte)
 	DestroyMK()
-	CreateSession() (nonce []byte, cipherData []byte, err error)
+	CreateSession(token []byte) (nonce []byte, cipherData []byte, err error)
 }
 
 type MSKVault struct {
@@ -110,7 +110,7 @@ func (a *MSKVault) EncryptSecret(secret domain.Secret) ([]byte, error) {
 	return format.MarshalFile(salt, nonce, cipherData)
 }
 
-func (a *MSKVault) CreateSession() (nonce []byte, cipherData []byte, err error) {
+func (a *MSKVault) CreateSession(token []byte) (nonce []byte, cipherData []byte, err error) {
 	if a.mk == nil {
 		return nil, nil, errors.New("failed to load master key")
 	}
@@ -122,13 +122,13 @@ func (a *MSKVault) CreateSession() (nonce []byte, cipherData []byte, err error) 
 	defer lockedBuffer.Destroy()
 
 	sha256 := &SHA256{}
-	key, err := sha256.DeriveKey(lockedBuffer.Bytes())
+	key, err := sha256.DeriveKey(token)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer wipe.Bytes(key)
 
-	nonce, cipherData, err = sealGCM(SESSION_NONCE_SIZE, key, key)
+	nonce, cipherData, err = sealGCM(SESSION_NONCE_SIZE, key, lockedBuffer.Bytes())
 	if err != nil {
 		return nil, nil, err
 	}

@@ -6,7 +6,6 @@ import (
 	"github.com/amauribechtoldjr/msk/internal/config"
 	"github.com/amauribechtoldjr/msk/internal/session"
 	"github.com/amauribechtoldjr/msk/internal/vault"
-	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/spf13/cobra"
 )
 
@@ -22,10 +21,6 @@ func NewUnlockCmd(vault vault.Vault) *cobra.Command {
 				return err
 			}
 
-			mkCopy := make([]byte, len(mk))
-			copy(mkCopy, mk)
-			defer wipe.Bytes(mkCopy)
-
 			vault.ConfigMK(mk)
 			defer vault.DestroyMK()
 
@@ -38,7 +33,7 @@ func NewUnlockCmd(vault vault.Vault) *cobra.Command {
 				return fmt.Errorf("failed to initialize session: %w", err)
 			}
 
-			token, err := sess.Create(mkCopy)
+			token, err := sess.Create(vault)
 			if err != nil {
 				return fmt.Errorf("failed to create session: %w", err)
 			}
