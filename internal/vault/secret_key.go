@@ -10,9 +10,12 @@ import (
 var ErrInvalidSalt = errors.New("invalid salt size")
 var ErrInvalidPass = errors.New("invalid master pass")
 
-type Argon2 struct{}
+// SecretKeyDeriver derives an AES-256 encryption key from the user's
+// master password using Argon2id. This is intentionally slow and
+// memory-hard to resist brute-force attacks on low-entropy passwords.
+type SecretKeyDeriver struct{}
 
-func (a *Argon2) DeriveKey(password, salt []byte) ([]byte, error) {
+func (s *SecretKeyDeriver) getSecretKey(password, salt []byte) ([]byte, error) {
 	if len(salt) != format.MSK_SALT_SIZE {
 		return nil, ErrInvalidSalt
 	}

@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
-	"github.com/amauribechtoldjr/msk/internal/wipe"
 )
 
 const (
@@ -56,8 +55,6 @@ func MarshalSecret(secret domain.Secret) []byte {
 }
 
 func UnmarshalSecret(data []byte) (domain.Secret, error) {
-	defer wipe.Bytes(data)
-
 	secret := &domain.Secret{}
 	offset := 0
 

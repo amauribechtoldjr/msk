@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -56,11 +57,15 @@ func (c *Config) Load(vault vault.Vault) (string, error) {
 		return "", err
 	}
 
+	// TODO: Refactor this, DecryptSecret it's returning a domain.Secret in this case,
+	// but this value it's the vault path
 	secret, err := vault.DecryptSecret(data)
 	if err != nil {
 		return "", ErrInvalidConfig
 	}
 	defer wipe.Bytes(secret.Password)
+
+	fmt.Printf("vault path: %v\n", string(secret.Password))
 
 	if secret.Name != MSK_CONFIG_NAME {
 		return "", ErrInvalidConfig

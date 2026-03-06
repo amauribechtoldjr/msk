@@ -1,13 +1,14 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"slices"
 
 	"github.com/amauribechtoldjr/msk/internal/app"
-	"github.com/amauribechtoldjr/msk/internal/build"
 	"github.com/amauribechtoldjr/msk/internal/config"
 	"github.com/amauribechtoldjr/msk/internal/logger"
+	"github.com/amauribechtoldjr/msk/internal/meta"
 	"github.com/amauribechtoldjr/msk/internal/session"
 	"github.com/amauribechtoldjr/msk/internal/storage"
 	"github.com/amauribechtoldjr/msk/internal/vault"
@@ -49,8 +50,6 @@ func NewMSKCmd(vault vault.Vault) *cobra.Command {
 			}
 
 			var mk []byte
-			defer wipe.Bytes(mk)
-
 			if token := os.Getenv("MSK_SESSION"); token != "" {
 				session, err := session.New()
 				if err != nil {
@@ -68,6 +67,7 @@ func NewMSKCmd(vault vault.Vault) *cobra.Command {
 					return err
 				}
 			}
+			defer wipe.Bytes(mk)
 
 			vault.ConfigMK(mk)
 
@@ -76,11 +76,14 @@ func NewMSKCmd(vault vault.Vault) *cobra.Command {
 				return err
 			}
 
+			// TODO: refactor this
 			vaultPath, err := conf.Load(vault)
 			if err != nil {
 				vault.DestroyMK()
 				return err
 			}
+
+			fmt.Printf("vault path after load: %v\n", vaultPath)
 
 			store, err := storage.NewStore(vaultPath)
 			if err != nil {
@@ -105,7 +108,7 @@ func NewMSKCmd(vault vault.Vault) *cobra.Command {
 			}
 
 			if isVersionCommand {
-				logger.PrintInfo(build.Version)
+				logger.PrintInfo(meta.Version)
 				os.Exit(0)
 			}
 

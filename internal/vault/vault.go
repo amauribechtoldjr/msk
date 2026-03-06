@@ -35,7 +35,9 @@ func (ac *MSKVault) ConfigMK(mk []byte) {
 	ac.mk = buffer.Seal()
 }
 
+// DestroyMK wipes all memguard-managed memory and releases the master key reference.
 func (ac *MSKVault) DestroyMK() {
+	memguard.Purge()
 	ac.mk = nil
 }
 
@@ -55,8 +57,8 @@ func (a *MSKVault) DecryptSecret(cipherData []byte) (domain.Secret, error) {
 	}
 	defer lockedBuffer.Destroy()
 
-	argon2 := &Argon2{}
-	key, err := argon2.DeriveKey(lockedBuffer.Bytes(), salt)
+	deriver := &SecretKeyDeriver{}
+	key, err := deriver.getSecretKey(lockedBuffer.Bytes(), salt)
 	if err != nil {
 		return domain.Secret{}, err
 	}
@@ -92,8 +94,8 @@ func (a *MSKVault) EncryptSecret(secret domain.Secret) ([]byte, error) {
 	}
 	defer lockedBuffer.Destroy()
 
-	argon2 := &Argon2{}
-	key, err := argon2.DeriveKey(lockedBuffer.Bytes(), salt)
+	deriver := &SecretKeyDeriver{}
+	key, err := deriver.getSecretKey(lockedBuffer.Bytes(), salt)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +103,7 @@ func (a *MSKVault) EncryptSecret(secret domain.Secret) ([]byte, error) {
 
 	fileBytes := format.MarshalSecret(secret)
 
-	nonce, cipherData, err := sealGCM(format.MSK_NONCE_SIZE, key, fileBytes)
+	nonce, cipherData, err := sealGCM(key, fileBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -122,14 +124,14 @@ func (a *MSKVault) CreateSession(token []byte) (nonce []byte, cipherData []byte,
 	}
 	defer lockedBuffer.Destroy()
 
-	sha256 := &SHA256{}
-	key, err := sha256.DeriveKey(token)
+	hasher := &TokenHasher{}
+	key, err := hasher.getSessionToken(token)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer wipe.Bytes(key)
 
-	nonce, cipherData, err = sealGCM(SESSION_NONCE_SIZE, key, lockedBuffer.Bytes())
+	nonce, cipherData, err = sealGCM(key, lockedBuffer.Bytes())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -138,8 +140,8 @@ func (a *MSKVault) CreateSession(token []byte) (nonce []byte, cipherData []byte,
 }
 
 func (a *MSKVault) LoadSession(token []byte, nonce []byte, cipherData []byte) ([]byte, error) {
-	sha256 := &SHA256{}
-	key, err := sha256.DeriveKey(token)
+	hasher := &TokenHasher{}
+	key, err := hasher.getSessionToken(token)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +155,7 @@ func (a *MSKVault) LoadSession(token []byte, nonce []byte, cipherData []byte) ([
 	return mk, nil
 }
 
-func sealGCM(nonceSize int, key []byte, fileBytes []byte) (nonce []byte, cipherData []byte, err error) {
+func sealGCM(key []byte, fileBytes []byte) (nonce []byte, cipherData []byte, err error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, nil, err
@@ -164,7 +166,7 @@ func sealGCM(nonceSize int, key []byte, fileBytes []byte) (nonce []byte, cipherD
 		return nil, nil, err
 	}
 
-	nonce, err = format.RandomBytes(nonceSize)
+	nonce, err = format.RandomBytes(gcm.NonceSize())
 	if err != nil {
 		return nil, nil, err
 	}

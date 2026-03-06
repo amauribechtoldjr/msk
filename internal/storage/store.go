@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,6 +24,7 @@ type Store struct {
 }
 
 func NewStore(dir string) (*Store, error) {
+	fmt.Printf("dir of new store: %v\n", dir)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}

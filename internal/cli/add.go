@@ -56,13 +56,13 @@ func NewAddCmd(holder *ServiceHolder) *cobra.Command {
 				return fmt.Errorf("failed to add secret: %w", err)
 			}
 
-			secret, err := holder.Service.GetSecret(name)
-			if err != nil {
-				return fmt.Errorf("failed to add secret: %w", err)
-			}
-			defer wipe.Bytes(secret)
-
 			if generate {
+				secret, err := holder.Service.GetSecret(name)
+				if err != nil {
+					return fmt.Errorf("failed to add secret: %w", err)
+				}
+				defer wipe.Bytes(secret)
+
 				err = clip.CopyText(secret)
 				if err != nil {
 					return fmt.Errorf("failed to copy password to your clipboard: %w", err)
