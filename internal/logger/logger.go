@@ -7,11 +7,11 @@ import (
 )
 
 func PrintInfo(message string) {
-	color.New(color.BgHiBlue).Print(message)
+	color.New(color.FgHiWhite).Fprint(os.Stderr, message)
 }
 
 func PrintSuccess(message string) {
-	color.New(color.FgGreen).Print(message)
+	color.New(color.FgGreen).Fprint(os.Stderr, message)
 }
 
 func PrintSuccessf(format string, a ...any) {

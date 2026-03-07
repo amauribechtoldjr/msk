@@ -27,7 +27,7 @@ func TestNewStore(t *testing.T) {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
-		fileInfo, err := os.Stat(store.dir)
+		fileInfo, err := os.Stat(store.Path)
 		if os.IsNotExist(err) {
 			t.Fatalf("directory don't exists %v", err)
 		} else if err != nil {
@@ -50,11 +50,9 @@ func TestNewStore(t *testing.T) {
 		storePath := filepath.Join(tempFile.Name(), "subdir")
 
 		_, err = NewStore(storePath)
-		if err != nil {
-			return
+		if err == nil {
+			t.Fatal("expected error when creating store with path collision, got nil")
 		}
-
-		t.Fatalf("store path created incorrectly: %v", err)
 	})
 }
 
@@ -63,7 +61,7 @@ func TestFileExists(t *testing.T) {
 		store := initializeStore(t)
 
 		fileName := "existing-file"
-		filePath := filepath.Join(store.dir, strings.Join([]string{fileName, ".msk"}, ""))
+		filePath := filepath.Join(store.Path, strings.Join([]string{fileName, ".msk"}, ""))
 		err := os.WriteFile(filePath, []byte{}, 0o600)
 		if err != nil {
 			t.Fatalf("failed to write test file: %v", err)
@@ -93,7 +91,7 @@ func TestGetFile(t *testing.T) {
 		store := initializeStore(t)
 
 		expected := []byte("MSK\x01some-encrypted-data")
-		err := os.WriteFile(filepath.Join(store.dir, "mysecret.msk"), expected, 0o600)
+		err := os.WriteFile(filepath.Join(store.Path, "mysecret.msk"), expected, 0o600)
 		if err != nil {
 			t.Fatalf("failed to write test file: %v", err)
 		}
@@ -125,7 +123,7 @@ func TestGetFile(t *testing.T) {
 		store := initializeStore(t)
 
 		expected := []byte("case-test-data")
-		err := os.WriteFile(filepath.Join(store.dir, "mykey.msk"), expected, 0o600)
+		err := os.WriteFile(filepath.Join(store.Path, "mykey.msk"), expected, 0o600)
 		if err != nil {
 			t.Fatalf("failed to write test file: %v", err)
 		}
@@ -146,7 +144,7 @@ func TestDeleteFile(t *testing.T) {
 		store := initializeStore(t)
 
 		fileName := "existing-file"
-		filePath := filepath.Join(store.dir, strings.Join([]string{fileName, ".msk"}, ""))
+		filePath := filepath.Join(store.Path, strings.Join([]string{fileName, ".msk"}, ""))
 		err := os.WriteFile(filePath, []byte{}, 0o600)
 		if err != nil {
 			t.Fatalf("failed to write test file: %v", err)
@@ -176,7 +174,7 @@ func TestDeleteFile(t *testing.T) {
 	t.Run("should resolve names case-insensitively", func(t *testing.T) {
 		store := initializeStore(t)
 
-		err := os.WriteFile(filepath.Join(store.dir, "mykey.msk"), []byte{}, 0o600)
+		err := os.WriteFile(filepath.Join(store.Path, "mykey.msk"), []byte{}, 0o600)
 		if err != nil {
 			t.Fatalf("failed to write test file: %v", err)
 		}
@@ -198,7 +196,7 @@ func TestGetFiles(t *testing.T) {
 		}
 
 		for _, fileName := range expectedFiles {
-			err := os.WriteFile(filepath.Join(store.dir, fileName+".msk"), []byte{}, 0o600)
+			err := os.WriteFile(filepath.Join(store.Path, fileName+".msk"), []byte{}, 0o600)
 			if err != nil {
 				t.Fatalf("failed to write test file: %v", err)
 			}
@@ -235,13 +233,13 @@ func TestGetFiles(t *testing.T) {
 		}
 
 		for _, fileName := range expectedFiles {
-			err := os.WriteFile(filepath.Join(store.dir, fileName+".msk"), []byte{}, 0o600)
+			err := os.WriteFile(filepath.Join(store.Path, fileName+".msk"), []byte{}, 0o600)
 			if err != nil {
 				t.Fatalf("failed to write test file: %v", err)
 			}
 		}
 
-		err := os.WriteFile(filepath.Join(store.dir, "another.fake"), []byte{}, 0o600)
+		err := os.WriteFile(filepath.Join(store.Path, "another.fake"), []byte{}, 0o600)
 		if err != nil {
 			t.Fatalf("failed to write test file: %v", err)
 		}
@@ -271,7 +269,7 @@ func TestGetFiles(t *testing.T) {
 	t.Run("should return empty string array when no files", func(t *testing.T) {
 		store := initializeStore(t)
 
-		err := os.WriteFile(filepath.Join(store.dir, "im-not-msk-file.fake"), []byte{}, 0o600)
+		err := os.WriteFile(filepath.Join(store.Path, "im-not-msk-file.fake"), []byte{}, 0o600)
 		if err != nil {
 			t.Fatalf("failed to write test file: %v", err)
 		}
@@ -326,7 +324,7 @@ func TestSaveFile(t *testing.T) {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
-		raw, err := os.ReadFile(filepath.Join(store.dir, "testsecret.msk"))
+		raw, err := os.ReadFile(filepath.Join(store.Path, "testsecret.msk"))
 		if err != nil {
 			t.Fatalf("failed to read saved file: %v", err)
 		}
@@ -346,7 +344,7 @@ func TestSaveFile(t *testing.T) {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
-		expectedPath := filepath.Join(store.dir, "mysecret.msk")
+		expectedPath := filepath.Join(store.Path, "mysecret.msk")
 		if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 			t.Fatal("expected file mysecret.msk but it does not exist")
 		}
@@ -367,7 +365,7 @@ func TestSaveFile(t *testing.T) {
 			t.Fatalf("second save failed: %v", err)
 		}
 
-		raw, err := os.ReadFile(filepath.Join(store.dir, "overwrite.msk"))
+		raw, err := os.ReadFile(filepath.Join(store.Path, "overwrite.msk"))
 		if err != nil {
 			t.Fatalf("failed to read file: %v", err)
 		}
@@ -390,7 +388,7 @@ func TestSaveFile(t *testing.T) {
 			t.Fatalf("save failed: %v", err)
 		}
 
-		matches, err := filepath.Glob(filepath.Join(store.dir, "*.tmp"))
+		matches, err := filepath.Glob(filepath.Join(store.Path, "*.tmp"))
 		if err != nil {
 			t.Fatalf("glob failed: %v", err)
 		}
@@ -423,7 +421,7 @@ func TestSaveFile(t *testing.T) {
 	})
 
 	t.Run("should return error for unwritable directory", func(t *testing.T) {
-		store := Store{dir: filepath.Join(t.TempDir(), "no", "such", "deep", "path")}
+		store := &Store{Path: filepath.Join(t.TempDir(), "no", "such", "deep", "path")}
 
 		encryptedFile := marshalOrFail(t, makeSalt(), makeNonce(), []byte("data"))
 
@@ -444,7 +442,7 @@ func TestSaveFile(t *testing.T) {
 			t.Fatalf("save failed: %v", err)
 		}
 
-		raw, err := os.ReadFile(filepath.Join(store.dir, "emptydata.msk"))
+		raw, err := os.ReadFile(filepath.Join(store.Path, "emptydata.msk"))
 		if err != nil {
 			t.Fatalf("failed to read file: %v", err)
 		}

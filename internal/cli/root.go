@@ -1,19 +1,25 @@
 package cli
 
 import (
+	"os"
+	"slices"
+
 	"github.com/amauribechtoldjr/msk/internal/app"
-	"github.com/amauribechtoldjr/msk/internal/config"
-	"github.com/amauribechtoldjr/msk/internal/encryption"
-	"github.com/amauribechtoldjr/msk/internal/storage"
+	"github.com/amauribechtoldjr/msk/internal/logger"
+	"github.com/amauribechtoldjr/msk/internal/meta"
+	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/spf13/cobra"
 )
 
 type ServiceHolder struct {
-	Service *app.MSKService
+	Service app.Service
 }
 
-func NewMSKCmd(enc encryption.Encryption) *cobra.Command {
+var ignored_commands = []string{"version", "v", "help", "unlock", "lock", "config"}
+
+func NewMSKCmd() *cobra.Command {
 	holder := &ServiceHolder{}
+	v := vault.NewMSKVault()
 
 	cmd := &cobra.Command{
 		Use:   "msk",
@@ -26,32 +32,42 @@ func NewMSKCmd(enc encryption.Encryption) *cobra.Command {
 			ensuring that even if someone gains access to your machine,
 			they won't be able to view any stored data without the correct master key.`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			mk, err := PromptMasterPassword(false)
+			if slices.Contains(ignored_commands, cmd.Name()) {
+				return nil
+			}
+
+			helpFlag, err := cmd.Flags().GetBool("help")
 			if err != nil {
 				return err
 			}
 
-			enc.ConfigMK(mk)
+			if helpFlag {
+				return nil
+			}
 
-			vaultPath, err := config.Load(enc)
+			holder.Service, err = app.BootstrapWithAuth(v)
 			if err != nil {
-				enc.DestroyMK()
 				return err
 			}
 
-			store, err := storage.NewStore(vaultPath)
-			if err != nil {
-				enc.DestroyMK()
-				return err
-			}
-
-			holder.Service = app.NewMSKService(store, enc)
 			return nil
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-			if holder.Service != nil {
-				holder.Service.DestroyMK()
+			v.DestroyMK()
+
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			isVersionCommand, err := cmd.Flags().GetBool("version")
+			if err != nil {
+				return err
 			}
+
+			if isVersionCommand {
+				logger.PrintInfo(meta.Version)
+				os.Exit(0)
+			}
+
 			return nil
 		},
 	}
@@ -71,8 +87,19 @@ func NewMSKCmd(enc encryption.Encryption) *cobra.Command {
 	updateCmd := NewUpdateCmd(holder)
 	cmd.AddCommand(updateCmd)
 
-	configCmd := NewConfigCmd(enc)
+	configCmd := NewConfigCmd(v)
 	cmd.AddCommand(configCmd)
+
+	versionCmd := NewVersionCmd()
+	cmd.AddCommand(versionCmd)
+
+	unlockCmd := NewUnlockCmd(v)
+	cmd.AddCommand(unlockCmd)
+
+	lockCmd := NewLockCmd()
+	cmd.AddCommand(lockCmd)
+
+	cmd.Flags().BoolP("version", "v", false, "Show MSK current version")
 
 	return cmd
 }

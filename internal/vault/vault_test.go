@@ -1,4 +1,4 @@
-package encryption
+package vault
 
 import (
 	"errors"
@@ -7,47 +7,22 @@ import (
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
 	"github.com/amauribechtoldjr/msk/internal/format"
+	"github.com/amauribechtoldjr/msk/internal/meta"
 )
 
-func TestNewArgonCrypt(t *testing.T) {
+func TestNewMSKVault(t *testing.T) {
 	t.Run("should initialize the struct correctly", func(t *testing.T) {
-		var crypt Encryption = NewArgonCrypt()
-		_, ok := crypt.(*ArgonCrypt)
+		var crypt Vault = NewMSKVault()
+		_, ok := crypt.(*vault)
 
 		if !ok {
-			t.Fatal("expected and variable of type ArgonCrypt")
+			t.Fatal("expected and variable of type vault")
 		}
 	})
 }
 
-func TestConfigMk(t *testing.T) {
-	t.Run("should set the master key correctly", func(t *testing.T) {
-		crypt := NewArgonCrypt()
-
-		if crypt.mk != nil {
-			t.Fatal("failed to initialize master key empty")
-		}
-
-		crypt.ConfigMK([]byte("master-key"))
-		if crypt.mk == nil {
-			t.Fatal("expected mk to be set after ConfigMK")
-		}
-
-		buffer, err := crypt.mk.Open()
-		if err != nil {
-			t.Fatal("failed to open the master key enclave buffer")
-		}
-
-		expectedKey := []byte("master-key")
-
-		if !reflect.DeepEqual(buffer.Bytes(), expectedKey) {
-			t.Fatalf("expected key: %v and got: %v", expectedKey, crypt.mk)
-		}
-	})
-}
-
-func newConfiguredCrypt(masterKey string) *ArgonCrypt {
-	crypt := NewArgonCrypt()
+func newConfiguredCrypt(masterKey string) Vault {
+	crypt := NewMSKVault()
 	crypt.ConfigMK([]byte(masterKey))
 	return crypt
 }
@@ -60,7 +35,7 @@ func TestEncrypt(t *testing.T) {
 			Password: []byte("s3cur3p@ss"),
 		}
 
-		encrypted, err := crypt.Encrypt(secret)
+		encrypted, err := crypt.EncryptSecret(secret)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -74,11 +49,11 @@ func TestEncrypt(t *testing.T) {
 			t.Fatal("expected non-empty cipher data")
 		}
 
-		if len(salt) != format.MSK_SALT_SIZE {
+		if len(salt) != meta.MSK_SALT_SIZE {
 			t.Fatal("expected valid salt")
 		}
 
-		if len(nonce) != format.MSK_NONCE_SIZE {
+		if len(nonce) != meta.MSK_NONCE_SIZE {
 			t.Fatal("expected valid nonce")
 		}
 	})
@@ -90,12 +65,12 @@ func TestEncrypt(t *testing.T) {
 			Password: []byte("s3cur3p@ss"),
 		}
 
-		enc1, err := crypt.Encrypt(secret)
+		enc1, err := crypt.EncryptSecret(secret)
 		if err != nil {
 			t.Fatalf("first encrypt failed: %v", err)
 		}
 
-		enc2, err := crypt.Encrypt(secret)
+		enc2, err := crypt.EncryptSecret(secret)
 		if err != nil {
 			t.Fatalf("second encrypt failed: %v", err)
 		}
@@ -106,13 +81,13 @@ func TestEncrypt(t *testing.T) {
 	})
 
 	t.Run("should return error when master key is not configured", func(t *testing.T) {
-		crypt := NewArgonCrypt()
+		crypt := NewMSKVault()
 		secret := domain.Secret{
 			Name:     "test",
 			Password: []byte("pass"),
 		}
 
-		_, err := crypt.Encrypt(secret)
+		_, err := crypt.EncryptSecret(secret)
 		if err == nil {
 			t.Fatal("expected error when master key is empty")
 		}
@@ -127,12 +102,12 @@ func TestDecrypt(t *testing.T) {
 			Password: []byte("p@ssw0rd!"),
 		}
 
-		encrypted, err := crypt.Encrypt(secret)
+		encrypted, err := crypt.EncryptSecret(secret)
 		if err != nil {
 			t.Fatalf("encrypt failed: %v", err)
 		}
 
-		decrypted, err := crypt.Decrypt(encrypted)
+		decrypted, err := crypt.DecryptSecret(encrypted)
 		if err != nil {
 			t.Fatalf("decrypt failed: %v", err)
 		}
@@ -150,7 +125,7 @@ func TestDecrypt(t *testing.T) {
 		crypt := newConfiguredCrypt("master-password")
 		shortData := []byte("MSK")
 
-		_, err := crypt.Decrypt(shortData)
+		_, err := crypt.DecryptSecret(shortData)
 		if err == nil {
 			t.Fatal("expected error for short data")
 		}
@@ -163,11 +138,11 @@ func TestDecrypt(t *testing.T) {
 	t.Run("should return ErrCorruptedFile when magic value is wrong", func(t *testing.T) {
 		crypt := newConfiguredCrypt("master-password")
 
-		data := make([]byte, format.MSK_HEADER_SIZE+16)
+		data := make([]byte, meta.MSK_HEADER_SIZE+16)
 		copy(data[:3], "BAD")
-		data[3] = format.MSK_FILE_VERSION
+		data[3] = meta.MSK_FILE_VERSION
 
-		_, err := crypt.Decrypt(data)
+		_, err := crypt.DecryptSecret(data)
 		if err == nil {
 			t.Fatal("expected error for wrong magic value")
 		}
@@ -179,11 +154,11 @@ func TestDecrypt(t *testing.T) {
 
 	t.Run("should return ErrUnsupportedFileVersion when version is wrong", func(t *testing.T) {
 		crypt := newConfiguredCrypt("master-password")
-		data := make([]byte, format.MSK_HEADER_SIZE+16)
-		copy(data[:3], format.MSK_MAGIC_VALUE)
+		data := make([]byte, meta.MSK_HEADER_SIZE+16)
+		copy(data[:3], meta.MSK_MAGIC_VALUE)
 		data[3] = 99
 
-		_, err := crypt.Decrypt(data)
+		_, err := crypt.DecryptSecret(data)
 		if err == nil {
 			t.Fatal("expected error for unsupported version")
 		}
@@ -200,13 +175,13 @@ func TestDecrypt(t *testing.T) {
 			Password: []byte("pass"),
 		}
 
-		encrypted, err := crypt.Encrypt(secret)
+		encrypted, err := crypt.EncryptSecret(secret)
 		if err != nil {
 			t.Fatalf("encrypt failed: %v", err)
 		}
 
 		wrongCrypt := newConfiguredCrypt("wrong-password")
-		_, err = wrongCrypt.Decrypt(encrypted)
+		_, err = wrongCrypt.DecryptSecret(encrypted)
 		if err == nil {
 			t.Fatal("expected error with wrong master key")
 		}
@@ -223,15 +198,15 @@ func TestDecrypt(t *testing.T) {
 			Password: []byte("pass"),
 		}
 
-		encrypted, err := crypt.Encrypt(secret)
+		encrypted, err := crypt.EncryptSecret(secret)
 		if err != nil {
 			t.Fatalf("encrypt failed: %v", err)
 		}
 
 		// Flip a byte in the cipher data portion
-		encrypted[format.MSK_HEADER_SIZE] ^= 0xFF
+		encrypted[meta.MSK_HEADER_SIZE] ^= 0xFF
 
-		_, err = crypt.Decrypt(encrypted)
+		_, err = crypt.DecryptSecret(encrypted)
 		if err == nil {
 			t.Fatal("expected error with tampered cipher data")
 		}
@@ -242,12 +217,12 @@ func TestDecrypt(t *testing.T) {
 	})
 
 	t.Run("should return error when master key is empty", func(t *testing.T) {
-		crypt := NewArgonCrypt()
-		data := make([]byte, format.MSK_HEADER_SIZE+16)
-		copy(data[:3], format.MSK_MAGIC_VALUE)
-		data[3] = format.MSK_FILE_VERSION
+		crypt := NewMSKVault()
+		data := make([]byte, meta.MSK_HEADER_SIZE+16)
+		copy(data[:3], meta.MSK_MAGIC_VALUE)
+		data[3] = meta.MSK_FILE_VERSION
 
-		_, err := crypt.Decrypt(data)
+		_, err := crypt.DecryptSecret(data)
 		if err == nil {
 			t.Fatal("expected error when master key is empty")
 		}

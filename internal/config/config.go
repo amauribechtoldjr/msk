@@ -6,7 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
-	"github.com/amauribechtoldjr/msk/internal/encryption"
+	"github.com/amauribechtoldjr/msk/internal/format"
+	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 )
 
@@ -17,28 +18,21 @@ var (
 
 const MSK_CONFIG_NAME = "msk-config"
 
-var configPathOverride string
-
-func Path() (string, error) {
-	if configPathOverride != "" {
-		return configPathOverride, nil
-	}
-
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(configDir, "msk", "config.msk"), nil
+type Config struct {
+	Path string
 }
 
-func Exists() (bool, error) {
-	path, err := Path()
+func NewConfig() (*Config, error) {
+	configDir, err := os.UserConfigDir()
 	if err != nil {
-		return false, err
+		return &Config{}, err
 	}
 
-	_, err = os.Stat(path)
+	return &Config{Path: filepath.Join(configDir, "msk", "config.msk")}, nil
+}
+
+func (c *Config) Exists() (bool, error) {
+	_, err := os.Stat(c.Path)
 	if err == nil {
 		return true, nil
 	}
@@ -50,13 +44,8 @@ func Exists() (bool, error) {
 	return false, err
 }
 
-func Load(enc encryption.Encryption) (string, error) {
-	path, err := Path()
-	if err != nil {
-		return "", err
-	}
-
-	data, err := os.ReadFile(path)
+func (c *Config) Load(vault vault.Vault) (string, error) {
+	data, err := os.ReadFile(c.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", ErrConfigNotFound
@@ -64,7 +53,9 @@ func Load(enc encryption.Encryption) (string, error) {
 		return "", err
 	}
 
-	secret, err := enc.Decrypt(data)
+	// TODO: Refactor this, DecryptSecret it's returning a domain.Secret in this case,
+	// but this value it's the vault path
+	secret, err := vault.DecryptSecret(data)
 	if err != nil {
 		return "", ErrInvalidConfig
 	}
@@ -77,13 +68,8 @@ func Load(enc encryption.Encryption) (string, error) {
 	return string(secret.Password), nil
 }
 
-func Save(enc encryption.Encryption, vaultPath string) error {
-	path, err := Path()
-	if err != nil {
-		return err
-	}
-
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+func (c *Config) Save(vault vault.Vault, vaultPath string) error {
+	if err := os.MkdirAll(filepath.Dir(c.Path), 0o700); err != nil {
 		return err
 	}
 
@@ -92,17 +78,19 @@ func Save(enc encryption.Encryption, vaultPath string) error {
 		Password: []byte(vaultPath),
 	}
 
-	encrypted, err := enc.Encrypt(secret)
+	fileBytes := format.MarshalSecret(secret)
+
+	encrypted, err := vault.Encrypt(fileBytes)
 	if err != nil {
 		return err
 	}
 
-	tmpPath := path + ".tmp"
+	tmpPath := c.Path + ".tmp"
 	if err := os.WriteFile(tmpPath, encrypted, 0o600); err != nil {
 		return err
 	}
 
-	if err := os.Rename(tmpPath, path); err != nil {
+	if err := os.Rename(tmpPath, c.Path); err != nil {
 		os.Remove(tmpPath)
 		return err
 	}
@@ -110,7 +98,7 @@ func Save(enc encryption.Encryption, vaultPath string) error {
 	return nil
 }
 
-func DefaultVaultPath() (string, error) {
+func (c *Config) DefaultVaultPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err

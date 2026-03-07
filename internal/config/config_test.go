@@ -6,32 +6,33 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/amauribechtoldjr/msk/internal/encryption"
+	encryption "github.com/amauribechtoldjr/msk/internal/vault"
 )
 
-func setupTestConfig(t *testing.T) {
+func newTestConfig(t *testing.T) *Config {
 	t.Helper()
-	tmpDir := t.TempDir()
-	configPathOverride = filepath.Join(tmpDir, "config.msk")
-	t.Cleanup(func() {
-		configPathOverride = ""
-	})
+	t.Setenv("AppData", t.TempDir())
+	cfg, err := NewConfig()
+	if err != nil {
+		t.Fatalf("NewConfig failed: %v", err)
+	}
+	return cfg
 }
 
 func TestSaveAndLoad(t *testing.T) {
 	t.Run("should save and load vault path with correct key", func(t *testing.T) {
-		setupTestConfig(t)
+		cfg := newTestConfig(t)
 
-		enc := encryption.NewArgonCrypt()
-		enc.ConfigMK([]byte("test-master-key"))
+		vault := encryption.NewMSKVault()
+		vault.ConfigMK([]byte("test-master-key"))
 
 		vaultPath := "/home/user/.msk/vault"
-		err := Save(enc, vaultPath)
+		err := cfg.Save(vault, vaultPath)
 		if err != nil {
 			t.Fatalf("Save failed: %v", err)
 		}
 
-		loaded, err := Load(enc)
+		loaded, err := cfg.Load(vault)
 		if err != nil {
 			t.Fatalf("Load failed: %v", err)
 		}
@@ -44,19 +45,19 @@ func TestSaveAndLoad(t *testing.T) {
 
 func TestLoadWrongKey(t *testing.T) {
 	t.Run("should return ErrInvalidConfig with wrong key", func(t *testing.T) {
-		setupTestConfig(t)
+		cfg := newTestConfig(t)
 
-		enc := encryption.NewArgonCrypt()
-		enc.ConfigMK([]byte("correct-key"))
+		vault := encryption.NewMSKVault()
+		vault.ConfigMK([]byte("correct-key"))
 
-		err := Save(enc, "/some/path")
+		err := cfg.Save(vault, "/some/path")
 		if err != nil {
 			t.Fatalf("Save failed: %v", err)
 		}
 
-		enc.ConfigMK([]byte("wrong-key"))
+		vault.ConfigMK([]byte("wrong-key"))
 
-		_, err = Load(enc)
+		_, err = cfg.Load(vault)
 		if !errors.Is(err, ErrInvalidConfig) {
 			t.Fatalf("expected ErrInvalidConfig, got %v", err)
 		}
@@ -65,12 +66,12 @@ func TestLoadWrongKey(t *testing.T) {
 
 func TestLoadNotFound(t *testing.T) {
 	t.Run("should return ErrConfigNotFound when file does not exist", func(t *testing.T) {
-		setupTestConfig(t)
+		cfg := newTestConfig(t)
 
-		enc := encryption.NewArgonCrypt()
-		enc.ConfigMK([]byte("some-key"))
+		vault := encryption.NewMSKVault()
+		vault.ConfigMK([]byte("some-key"))
 
-		_, err := Load(enc)
+		_, err := cfg.Load(vault)
 		if !errors.Is(err, ErrConfigNotFound) {
 			t.Fatalf("expected ErrConfigNotFound, got %v", err)
 		}
@@ -79,9 +80,9 @@ func TestLoadNotFound(t *testing.T) {
 
 func TestExists(t *testing.T) {
 	t.Run("should return false when config does not exist", func(t *testing.T) {
-		setupTestConfig(t)
+		cfg := newTestConfig(t)
 
-		exists, err := Exists()
+		exists, err := cfg.Exists()
 		if err != nil {
 			t.Fatalf("Exists failed: %v", err)
 		}
@@ -92,17 +93,17 @@ func TestExists(t *testing.T) {
 	})
 
 	t.Run("should return true when config exists", func(t *testing.T) {
-		setupTestConfig(t)
+		cfg := newTestConfig(t)
 
-		enc := encryption.NewArgonCrypt()
-		enc.ConfigMK([]byte("test-key"))
+		vault := encryption.NewMSKVault()
+		vault.ConfigMK([]byte("test-key"))
 
-		err := Save(enc, "/some/path")
+		err := cfg.Save(vault, "/some/path")
 		if err != nil {
 			t.Fatalf("Save failed: %v", err)
 		}
 
-		exists, err := Exists()
+		exists, err := cfg.Exists()
 		if err != nil {
 			t.Fatalf("Exists failed: %v", err)
 		}
@@ -115,7 +116,9 @@ func TestExists(t *testing.T) {
 
 func TestDefaultVaultPath(t *testing.T) {
 	t.Run("should return a path under home directory", func(t *testing.T) {
-		path, err := DefaultVaultPath()
+		cfg := newTestConfig(t)
+
+		path, err := cfg.DefaultVaultPath()
 		if err != nil {
 			t.Fatalf("DefaultVaultPath failed: %v", err)
 		}

@@ -5,11 +5,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/amauribechtoldjr/msk/internal/encryption"
 	"github.com/amauribechtoldjr/msk/internal/storage"
+	encryption "github.com/amauribechtoldjr/msk/internal/vault"
 )
 
-func newTestService(t *testing.T, masterKey string) *MSKService {
+func newTestService(t *testing.T, masterKey string) Service {
 	t.Helper()
 
 	store, err := storage.NewStore(t.TempDir())
@@ -17,7 +17,7 @@ func newTestService(t *testing.T, masterKey string) *MSKService {
 		t.Fatalf("failed to create store: %v", err)
 	}
 
-	crypto := encryption.NewArgonCrypt()
+	crypto := encryption.NewMSKVault()
 	crypto.ConfigMK([]byte(masterKey))
 
 	return NewMSKService(store, crypto)
@@ -29,33 +29,6 @@ func TestNewMSKService(t *testing.T) {
 
 		if service == nil {
 			t.Fatal("expected non-nil service")
-		}
-	})
-}
-
-func TestConfigMK(t *testing.T) {
-	t.Run("should allow decryption after reconfiguring master key", func(t *testing.T) {
-		service := newTestService(t, "first-key")
-
-		err := service.AddSecret("secret", []byte("password"))
-		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
-		}
-
-		service.ConfigMK([]byte("wrong-key"))
-		_, err = service.GetSecret("secret")
-		if err == nil {
-			t.Fatal("expected error with wrong master key")
-		}
-
-		service.ConfigMK([]byte("first-key"))
-		password, err := service.GetSecret("secret")
-		if err != nil {
-			t.Fatalf("expected no error after restoring key, got %v", err)
-		}
-
-		if !reflect.DeepEqual(password, []byte("password")) {
-			t.Fatalf("expected password %q, got %q", "password", password)
 		}
 	})
 }
@@ -90,7 +63,7 @@ func TestAddSecret(t *testing.T) {
 			t.Fatalf("failed to create store: %v", err)
 		}
 
-		crypto := encryption.NewArgonCrypt()
+		crypto := encryption.NewMSKVault()
 		service := NewMSKService(store, crypto)
 
 		err = service.AddSecret("secret", []byte("pass"))
@@ -138,7 +111,7 @@ func TestGetSecret(t *testing.T) {
 			t.Fatalf("add failed: %v", err)
 		}
 
-		service.ConfigMK([]byte("wrong-key"))
+		service = newTestService(t, "wrong-key")
 
 		_, err = service.GetSecret("secret")
 		if err == nil {

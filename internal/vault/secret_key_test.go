@@ -1,4 +1,4 @@
-package encryption
+package vault
 
 import (
 	"errors"
@@ -6,18 +6,20 @@ import (
 	"testing"
 
 	"github.com/amauribechtoldjr/msk/internal/format"
+	"github.com/amauribechtoldjr/msk/internal/meta"
 )
 
-func TestGetArgonDeriveKey(t *testing.T) {
+func TestGetSecretKey(t *testing.T) {
 	t.Run("should return exactly 32 bytes for every password/salt combination", func(t *testing.T) {
+		deriver := &SecretKeyDeriver{}
 		masterPassword := []byte("master-pass")
-		salt, err := randomBytes(format.MSK_SALT_SIZE)
+		salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
 
 		expectedSize := 32
-		key, err := getArgonDeriveKey(masterPassword, salt)
+		key, err := deriver.getSecretKey(masterPassword, salt)
 		if err != nil {
 			t.Fatal("failed to generate argon derived key")
 		}
@@ -28,18 +30,19 @@ func TestGetArgonDeriveKey(t *testing.T) {
 	})
 
 	t.Run("should produces identical output for same master and salt", func(t *testing.T) {
+		deriver := &SecretKeyDeriver{}
 		masterPassword := []byte("master-pass")
-		salt, err := randomBytes(format.MSK_SALT_SIZE)
+		salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
 
-		key, err := getArgonDeriveKey(masterPassword, salt)
+		key, err := deriver.getSecretKey(masterPassword, salt)
 		if err != nil {
 			t.Fatal("failed to generate argon derived key")
 		}
 
-		key2, err := getArgonDeriveKey(masterPassword, salt)
+		key2, err := deriver.getSecretKey(masterPassword, salt)
 		if err != nil {
 			t.Fatal("failed to generate argon derived key")
 		}
@@ -50,20 +53,21 @@ func TestGetArgonDeriveKey(t *testing.T) {
 	})
 
 	t.Run("should produces different output when different master pass", func(t *testing.T) {
+		deriver := &SecretKeyDeriver{}
 		masterPassword := []byte("master-pass")
-		salt, err := randomBytes(format.MSK_SALT_SIZE)
+		salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
 
-		key, err := getArgonDeriveKey(masterPassword, salt)
+		key, err := deriver.getSecretKey(masterPassword, salt)
 		if err != nil {
 			t.Fatal("failed to generate argon derived key")
 		}
 
 		masterPassword2 := []byte("master-pass2")
 
-		key2, err := getArgonDeriveKey(masterPassword2, salt)
+		key2, err := deriver.getSecretKey(masterPassword2, salt)
 		if err != nil {
 			t.Fatal("failed to generate argon derived key")
 		}
@@ -74,23 +78,24 @@ func TestGetArgonDeriveKey(t *testing.T) {
 	})
 
 	t.Run("should produces different output when different salt", func(t *testing.T) {
+		deriver := &SecretKeyDeriver{}
 		masterPassword := []byte("master-pass")
-		salt, err := randomBytes(format.MSK_SALT_SIZE)
+		salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
 
-		key, err := getArgonDeriveKey(masterPassword, salt)
+		key, err := deriver.getSecretKey(masterPassword, salt)
 		if err != nil {
 			t.Fatal("failed to generate argon derived key")
 		}
 
-		salt2, err := randomBytes(format.MSK_SALT_SIZE)
+		salt2, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
 
-		key2, err := getArgonDeriveKey(masterPassword, salt2)
+		key2, err := deriver.getSecretKey(masterPassword, salt2)
 		if err != nil {
 			t.Fatal("failed to generate argon derived key")
 		}
@@ -101,13 +106,14 @@ func TestGetArgonDeriveKey(t *testing.T) {
 	})
 
 	t.Run("should return error when empty pass", func(t *testing.T) {
+		deriver := &SecretKeyDeriver{}
 		masterPassword := []byte("")
-		salt, err := randomBytes(format.MSK_SALT_SIZE)
+		salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
 
-		_, err = getArgonDeriveKey(masterPassword, salt)
+		_, err = deriver.getSecretKey(masterPassword, salt)
 		if err == nil {
 			t.Fatal("expected ErrInvalidPass, got no error")
 		}
@@ -118,10 +124,11 @@ func TestGetArgonDeriveKey(t *testing.T) {
 	})
 
 	t.Run("should return error when empty salt", func(t *testing.T) {
+		deriver := &SecretKeyDeriver{}
 		masterPassword := []byte("master-pass")
 		salt := []byte{}
 
-		_, err := getArgonDeriveKey(masterPassword, salt)
+		_, err := deriver.getSecretKey(masterPassword, salt)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}

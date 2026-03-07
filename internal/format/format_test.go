@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
+	"github.com/amauribechtoldjr/msk/internal/meta"
 )
 
 func TestMarshalUnmarshalSecret(t *testing.T) {
@@ -104,6 +105,42 @@ func TestMarshalUnmarshalSecret(t *testing.T) {
 	})
 }
 
+func TestUnmarshalSecretCorrupted(t *testing.T) {
+	t.Run("should return ErrCorruptedFile for empty input", func(t *testing.T) {
+		_, err := UnmarshalSecret([]byte{})
+		if err != ErrCorruptedFile {
+			t.Fatalf("expected ErrCorruptedFile, got %v", err)
+		}
+	})
+
+	t.Run("should return ErrCorruptedFile when name length overflows data", func(t *testing.T) {
+		// name length says 100 but only 2 bytes of data follow
+		data := []byte{0x00, 0x64, 0x41, 0x42}
+		_, err := UnmarshalSecret(data)
+		if err != ErrCorruptedFile {
+			t.Fatalf("expected ErrCorruptedFile, got %v", err)
+		}
+	})
+
+	t.Run("should return ErrCorruptedFile when password length is missing", func(t *testing.T) {
+		// name length = 2, name = "ab", then no room for password length
+		data := []byte{0x00, 0x02, 0x61, 0x62}
+		_, err := UnmarshalSecret(data)
+		if err != ErrCorruptedFile {
+			t.Fatalf("expected ErrCorruptedFile, got %v", err)
+		}
+	})
+
+	t.Run("should return ErrCorruptedFile when password length overflows data", func(t *testing.T) {
+		// name length = 1, name = "a", password length = 99, no password bytes
+		data := []byte{0x00, 0x01, 0x61, 0x00, 0x63}
+		_, err := UnmarshalSecret(data)
+		if err != ErrCorruptedFile {
+			t.Fatalf("expected ErrCorruptedFile, got %v", err)
+		}
+	})
+}
+
 func TestMarshalSecretFormat(t *testing.T) {
 	t.Run("should produce correct binary layout", func(t *testing.T) {
 		secret := domain.Secret{
@@ -113,7 +150,7 @@ func TestMarshalSecretFormat(t *testing.T) {
 
 		data := MarshalSecret(secret)
 
-		expectedLen := MSK_NAME_LENGTH_SIZE + 2 + MSK_PASSWORD_LENGTH_SIZE + 3
+		expectedLen := meta.SECRET_NAME_LENGTH_SIZE + 2 + meta.SECRET_PASSWORD_LENGTH_SIZE + 3
 		if len(data) != expectedLen {
 			t.Fatalf("expected length %d, got %d", expectedLen, len(data))
 		}
@@ -138,7 +175,7 @@ func TestMarshalSecretFormat(t *testing.T) {
 
 func TestMarshalFile(t *testing.T) {
 	makeSalt := func() []byte {
-		s := make([]byte, MSK_SALT_SIZE)
+		s := make([]byte, meta.MSK_SALT_SIZE)
 		for i := range s {
 			s[i] = byte(i + 1)
 		}
@@ -146,7 +183,7 @@ func TestMarshalFile(t *testing.T) {
 	}
 
 	makeNonce := func() []byte {
-		n := make([]byte, MSK_NONCE_SIZE)
+		n := make([]byte, meta.MSK_NONCE_SIZE)
 		for i := range n {
 			n[i] = byte(i + 0xA0)
 		}
@@ -163,30 +200,30 @@ func TestMarshalFile(t *testing.T) {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
-		expectedLen := MSK_HEADER_SIZE + len(data)
+		expectedLen := meta.MSK_HEADER_SIZE + len(data)
 		if len(file) != expectedLen {
 			t.Fatalf("expected length %d, got %d", expectedLen, len(file))
 		}
 
-		if string(file[:MSK_MAGIC_SIZE]) != MSK_MAGIC_VALUE {
-			t.Fatalf("expected magic %q, got %q", MSK_MAGIC_VALUE, string(file[:MSK_MAGIC_SIZE]))
+		if string(file[:meta.MSK_MAGIC_SIZE]) != meta.MSK_MAGIC_VALUE {
+			t.Fatalf("expected magic %q, got %q", meta.MSK_MAGIC_VALUE, string(file[:meta.MSK_MAGIC_SIZE]))
 		}
 
-		if file[MSK_MAGIC_SIZE] != MSK_FILE_VERSION {
-			t.Fatalf("expected version %d, got %d", MSK_FILE_VERSION, file[MSK_MAGIC_SIZE])
+		if file[meta.MSK_MAGIC_SIZE] != meta.MSK_FILE_VERSION {
+			t.Fatalf("expected version %d, got %d", meta.MSK_FILE_VERSION, file[meta.MSK_MAGIC_SIZE])
 		}
 
-		offset := MSK_MAGIC_SIZE + MSK_VERSION_SIZE
+		offset := meta.MSK_MAGIC_SIZE + meta.MSK_VERSION_SIZE
 
-		if !bytes.Equal(file[offset:offset+MSK_SALT_SIZE], salt) {
+		if !bytes.Equal(file[offset:offset+meta.MSK_SALT_SIZE], salt) {
 			t.Fatal("salt mismatch")
 		}
-		offset += MSK_SALT_SIZE
+		offset += meta.MSK_SALT_SIZE
 
-		if !bytes.Equal(file[offset:offset+MSK_NONCE_SIZE], nonce) {
+		if !bytes.Equal(file[offset:offset+meta.MSK_NONCE_SIZE], nonce) {
 			t.Fatal("nonce mismatch")
 		}
-		offset += MSK_NONCE_SIZE
+		offset += meta.MSK_NONCE_SIZE
 
 		if !bytes.Equal(file[offset:], data) {
 			t.Fatal("data mismatch")
@@ -199,8 +236,8 @@ func TestMarshalFile(t *testing.T) {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
-		if len(file) != MSK_HEADER_SIZE {
-			t.Fatalf("expected length %d, got %d", MSK_HEADER_SIZE, len(file))
+		if len(file) != meta.MSK_HEADER_SIZE {
+			t.Fatalf("expected length %d, got %d", meta.MSK_HEADER_SIZE, len(file))
 		}
 	})
 
@@ -221,7 +258,7 @@ func TestMarshalFile(t *testing.T) {
 
 func TestUnmarshalFile(t *testing.T) {
 	makeSalt := func() []byte {
-		s := make([]byte, MSK_SALT_SIZE)
+		s := make([]byte, meta.MSK_SALT_SIZE)
 		for i := range s {
 			s[i] = byte(i + 1)
 		}
@@ -229,7 +266,7 @@ func TestUnmarshalFile(t *testing.T) {
 	}
 
 	makeNonce := func() []byte {
-		n := make([]byte, MSK_NONCE_SIZE)
+		n := make([]byte, meta.MSK_NONCE_SIZE)
 		for i := range n {
 			n[i] = byte(i + 0xA0)
 		}
@@ -272,9 +309,9 @@ func TestUnmarshalFile(t *testing.T) {
 	})
 
 	t.Run("should return ErrCorruptedFile when magic is wrong", func(t *testing.T) {
-		data := make([]byte, MSK_HEADER_SIZE+10)
+		data := make([]byte, meta.MSK_HEADER_SIZE+10)
 		copy(data[:3], "BAD")
-		data[3] = MSK_FILE_VERSION
+		data[3] = meta.MSK_FILE_VERSION
 
 		_, _, _, err := UnmarshalFile(data)
 		if err != ErrCorruptedFile {
@@ -283,8 +320,8 @@ func TestUnmarshalFile(t *testing.T) {
 	})
 
 	t.Run("should return ErrUnsupportedFileVersion when version is wrong", func(t *testing.T) {
-		data := make([]byte, MSK_HEADER_SIZE+10)
-		copy(data[:3], MSK_MAGIC_VALUE)
+		data := make([]byte, meta.MSK_HEADER_SIZE+10)
+		copy(data[:3], meta.MSK_MAGIC_VALUE)
 		data[3] = 99
 
 		_, _, _, err := UnmarshalFile(data)

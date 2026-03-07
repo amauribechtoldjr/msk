@@ -19,19 +19,19 @@ type Repository interface {
 }
 
 type Store struct {
-	dir string
+	Path string
 }
 
-func NewStore(dir string) (*Store, error) {
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+func NewStore(path string) (*Store, error) {
+	if err := os.MkdirAll(path, 0o700); err != nil {
 		return nil, err
 	}
 
-	return &Store{dir: dir}, nil
+	return &Store{path}, nil
 }
 
 func (s *Store) SaveFile(encryptedFile []byte, name string) error {
-	path := s.secretPath(name)
+	path := s.getFilePath(name)
 	tmpPath := path + ".tmp"
 
 	tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
@@ -70,7 +70,7 @@ func (s *Store) SaveFile(encryptedFile []byte, name string) error {
 }
 
 func (s *Store) GetFile(name string) ([]byte, error) {
-	data, err := os.ReadFile(s.secretPath(name))
+	data, err := os.ReadFile(s.getFilePath(name))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, ErrNotFound
@@ -83,9 +83,9 @@ func (s *Store) GetFile(name string) ([]byte, error) {
 }
 
 func (s *Store) DeleteFile(name string) error {
-	secretPath := s.secretPath(name)
+	getFilePath := s.getFilePath(name)
 
-	info, err := os.Stat(secretPath)
+	info, err := os.Stat(getFilePath)
 	if err != nil {
 		return ErrNotFound
 	}
@@ -94,7 +94,7 @@ func (s *Store) DeleteFile(name string) error {
 		return ErrInvalidSecret
 	}
 
-	err = os.Remove(secretPath)
+	err = os.Remove(getFilePath)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (s *Store) DeleteFile(name string) error {
 }
 
 func (s *Store) FileExists(name string) bool {
-	_, err := os.Stat(s.secretPath(name))
+	_, err := os.Stat(s.getFilePath(name))
 	if err == nil {
 		return true
 	}
@@ -112,7 +112,7 @@ func (s *Store) FileExists(name string) bool {
 }
 
 func (s *Store) GetFiles() ([]string, error) {
-	files, err := os.ReadDir(s.dir)
+	files, err := os.ReadDir(s.Path)
 	if err != nil {
 		return nil, err
 	}

@@ -4,8 +4,9 @@ import (
 	"errors"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
-	"github.com/amauribechtoldjr/msk/internal/encryption"
+	"github.com/amauribechtoldjr/msk/internal/format"
 	"github.com/amauribechtoldjr/msk/internal/storage"
+	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 )
 
@@ -14,24 +15,24 @@ var (
 	ErrSecretNotFound = errors.New("secret not found")
 )
 
+type Service interface {
+	DeleteSecret(name string) error
+	AddSecret(name string, rawP []byte) error
+	UpdateSecret(name string, rawP []byte) error
+	GetSecret(name string) ([]byte, error)
+	ListSecrets() ([]string, error)
+}
+
 type MSKService struct {
-	repo   storage.Repository
-	crypto encryption.Encryption
+	repo  storage.Repository
+	vault vault.Vault
 }
 
-func NewMSKService(r storage.Repository, c encryption.Encryption) *MSKService {
+func NewMSKService(r storage.Repository, v vault.Vault) Service {
 	return &MSKService{
-		crypto: c,
-		repo:   r,
+		vault: v,
+		repo:  r,
 	}
-}
-
-func (s *MSKService) ConfigMK(mk []byte) {
-	s.crypto.ConfigMK(mk)
-}
-
-func (s *MSKService) DestroyMK() {
-	s.crypto.DestroyMK()
 }
 
 func (s *MSKService) DeleteSecret(name string) error {
@@ -53,7 +54,9 @@ func (s *MSKService) AddSecret(name string, rawP []byte) error {
 	}
 	defer wipe.Bytes(secret.Password)
 
-	encryptionResult, err := s.crypto.Encrypt(secret)
+	fileBytes := format.MarshalSecret(secret)
+
+	encryptionResult, err := s.vault.Encrypt(fileBytes)
 	if err != nil {
 		return err
 	}
@@ -72,7 +75,9 @@ func (s *MSKService) UpdateSecret(name string, rawP []byte) error {
 	}
 	defer wipe.Bytes(secret.Password)
 
-	encryptionResult, err := s.crypto.Encrypt(secret)
+	fileBytes := format.MarshalSecret(secret)
+
+	encryptionResult, err := s.vault.Encrypt(fileBytes)
 	if err != nil {
 		return err
 	}
@@ -90,7 +95,7 @@ func (s *MSKService) GetSecret(name string) ([]byte, error) {
 		return nil, err
 	}
 
-	secretData, err := s.crypto.Decrypt(fileData)
+	secretData, err := s.vault.DecryptSecret(fileData)
 	if err != nil {
 		return nil, err
 	}

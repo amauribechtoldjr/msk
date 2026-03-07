@@ -3,10 +3,6 @@ main.exe
 
 bin/*
 
-vault
-vault/*
-
 .claude
 
-improvements.md
-memguardplan.md
+docs/plans
