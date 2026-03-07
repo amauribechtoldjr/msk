@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/amauribechtoldjr/msk/internal/format"
-	"github.com/amauribechtoldjr/msk/internal/vault"
+	"github.com/amauribechtoldjr/msk/internal/gcm"
+	"github.com/amauribechtoldjr/msk/internal/meta"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 )
 
@@ -19,94 +20,102 @@ var (
 	ErrSessionNotFound = errors.New("session file not found")
 )
 
-type Session struct {
+type Session interface {
+	LoadFile(token string) (*BinarySession, error)
+	StoreSession(sealedGCM *gcm.SealedCGM) error
+	GetSessionToken() ([]byte, error)
+	Destroy() error
+}
+
+type session struct {
 	path string
 }
 
-func New() (*Session, error) {
+type BinarySession struct {
+	Token      []byte
+	Nonce      []byte
+	CipherData []byte
+}
+
+func New() (Session, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return nil, err
 	}
 
-	return &Session{
+	return &session{
 		path: filepath.Join(configDir, "msk", "session.msk"),
 	}, nil
 }
 
-func (s *Session) Create(v vault.Vault) (string, error) {
-	tokenBytes, err := format.RandomBytes(vault.SESSION_TOKEN_SIZE)
-	if err != nil {
-		return "", err
-	}
-	defer wipe.Bytes(tokenBytes)
-
-	token := hex.EncodeToString(tokenBytes)
-
-	nonce, cipherMkData, err := v.CreateSession(tokenBytes)
-	if err != nil {
-		return "", err
-	}
-
-	expiry := time.Now().Add(vault.SESSION_TTL).Unix()
-	file := make([]byte, vault.SESSION_HEADER_SIZE+len(cipherMkData))
-	defer wipe.Bytes(file)
-	copy(file[0:vault.SESSION_NONCE_SIZE], nonce)
-	binary.BigEndian.PutUint64(file[vault.SESSION_NONCE_SIZE:vault.SESSION_HEADER_SIZE], uint64(expiry))
-	copy(file[vault.SESSION_HEADER_SIZE:], cipherMkData)
-
-	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
-		return "", err
-	}
-
-	tmpPath := s.path + ".tmp"
-	if err := os.WriteFile(tmpPath, file, 0o600); err != nil {
-		return "", err
-	}
-
-	if err := os.Rename(tmpPath, s.path); err != nil {
-		os.Remove(tmpPath)
-		return "", err
-	}
-	return token, nil
-}
-
-func (s *Session) Load(token string, v vault.Vault) ([]byte, error) {
+func (s *session) LoadFile(token string) (*BinarySession, error) {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, ErrSessionNotFound
+			return &BinarySession{}, ErrSessionNotFound
 		}
 		return nil, ErrSessionInvalid
 	}
 
-	if len(data) < vault.SESSION_HEADER_SIZE+1 {
+	if len(data) < meta.SESSION_HEADER_SIZE+1 {
 		return nil, ErrSessionInvalid
 	}
 
-	expiry := int64(binary.BigEndian.Uint64(data[vault.SESSION_NONCE_SIZE:vault.SESSION_HEADER_SIZE]))
+	expiry := int64(binary.BigEndian.Uint64(data[meta.SESSION_NONCE_SIZE:meta.SESSION_HEADER_SIZE]))
 	if time.Now().Unix() > expiry {
 		return nil, ErrSessionExpired
 	}
 
 	tokenBytes, err := hex.DecodeString(token)
-	if err != nil || len(tokenBytes) != vault.SESSION_TOKEN_SIZE {
-		return nil, ErrSessionInvalid
-	}
-	defer wipe.Bytes(tokenBytes)
-
-	nonce := data[0:vault.SESSION_NONCE_SIZE]
-	ciphertext := data[vault.SESSION_HEADER_SIZE:]
-
-	mk, err := v.LoadSession(tokenBytes, nonce, ciphertext)
-	if err != nil {
+	if err != nil || len(tokenBytes) != meta.SESSION_TOKEN_SIZE {
 		return nil, ErrSessionInvalid
 	}
 
-	return mk, nil
+	nonce := data[0:meta.SESSION_NONCE_SIZE]
+	cipherData := data[meta.SESSION_HEADER_SIZE:]
+
+	return &BinarySession{
+		Token:      tokenBytes,
+		Nonce:      nonce,
+		CipherData: cipherData,
+	}, nil
 }
 
-func (s *Session) Refresh() error {
+func (s *session) GetSessionToken() ([]byte, error) {
+	tokenBytes, err := format.RandomBytes(meta.SESSION_TOKEN_SIZE)
+	if err != nil {
+		return nil, err
+	}
+
+	return tokenBytes, nil
+}
+
+func (s *session) StoreSession(sealedGCM *gcm.SealedCGM) error {
+	expiry := time.Now().Add(meta.SESSION_TTL).Unix()
+	file := make([]byte, meta.SESSION_HEADER_SIZE+len(sealedGCM.CipherData))
+	defer wipe.Bytes(file)
+	copy(file[0:meta.SESSION_NONCE_SIZE], sealedGCM.Nonce)
+	binary.BigEndian.PutUint64(file[meta.SESSION_NONCE_SIZE:meta.SESSION_HEADER_SIZE], uint64(expiry))
+	copy(file[meta.SESSION_HEADER_SIZE:], sealedGCM.CipherData)
+
+	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
+		return err
+	}
+
+	tmpPath := s.path + ".tmp"
+	if err := os.WriteFile(tmpPath, file, 0o600); err != nil {
+		return err
+	}
+
+	if err := os.Rename(tmpPath, s.path); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+
+	return nil
+}
+
+func (s *session) Refresh() error {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -116,12 +125,12 @@ func (s *Session) Refresh() error {
 	}
 	defer wipe.Bytes(data)
 
-	if len(data) < vault.SESSION_HEADER_SIZE+1 {
+	if len(data) < meta.SESSION_HEADER_SIZE+1 {
 		return ErrSessionInvalid
 	}
 
-	newExpiry := time.Now().Add(vault.SESSION_TTL).Unix()
-	binary.BigEndian.PutUint64(data[vault.SESSION_NONCE_SIZE:vault.SESSION_HEADER_SIZE], uint64(newExpiry))
+	newExpiry := time.Now().Add(meta.SESSION_TTL).Unix()
+	binary.BigEndian.PutUint64(data[meta.SESSION_NONCE_SIZE:meta.SESSION_HEADER_SIZE], uint64(newExpiry))
 
 	tmpPath := s.path + ".tmp"
 	if err := os.WriteFile(tmpPath, data, 0o600); err != nil {
@@ -134,7 +143,7 @@ func (s *Session) Refresh() error {
 	return nil
 }
 
-func (s *Session) Destroy() error {
+func (s *session) Destroy() error {
 	err := os.Remove(s.path)
 	if err != nil && !os.IsNotExist(err) {
 		return err

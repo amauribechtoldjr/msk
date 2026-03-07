@@ -6,13 +6,14 @@ import (
 	"testing"
 
 	"github.com/amauribechtoldjr/msk/internal/format"
+	"github.com/amauribechtoldjr/msk/internal/meta"
 )
 
 func TestGetSecretKey(t *testing.T) {
 	t.Run("should return exactly 32 bytes for every password/salt combination", func(t *testing.T) {
 		deriver := &SecretKeyDeriver{}
 		masterPassword := []byte("master-pass")
-		salt, err := format.RandomBytes(format.MSK_SALT_SIZE)
+		salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
@@ -31,7 +32,7 @@ func TestGetSecretKey(t *testing.T) {
 	t.Run("should produces identical output for same master and salt", func(t *testing.T) {
 		deriver := &SecretKeyDeriver{}
 		masterPassword := []byte("master-pass")
-		salt, err := format.RandomBytes(format.MSK_SALT_SIZE)
+		salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
@@ -54,7 +55,7 @@ func TestGetSecretKey(t *testing.T) {
 	t.Run("should produces different output when different master pass", func(t *testing.T) {
 		deriver := &SecretKeyDeriver{}
 		masterPassword := []byte("master-pass")
-		salt, err := format.RandomBytes(format.MSK_SALT_SIZE)
+		salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
@@ -79,7 +80,7 @@ func TestGetSecretKey(t *testing.T) {
 	t.Run("should produces different output when different salt", func(t *testing.T) {
 		deriver := &SecretKeyDeriver{}
 		masterPassword := []byte("master-pass")
-		salt, err := format.RandomBytes(format.MSK_SALT_SIZE)
+		salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
@@ -89,7 +90,7 @@ func TestGetSecretKey(t *testing.T) {
 			t.Fatal("failed to generate argon derived key")
 		}
 
-		salt2, err := format.RandomBytes(format.MSK_SALT_SIZE)
+		salt2, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}
@@ -107,7 +108,7 @@ func TestGetSecretKey(t *testing.T) {
 	t.Run("should return error when empty pass", func(t *testing.T) {
 		deriver := &SecretKeyDeriver{}
 		masterPassword := []byte("")
-		salt, err := format.RandomBytes(format.MSK_SALT_SIZE)
+		salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate salt array")
 		}

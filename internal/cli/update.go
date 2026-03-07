@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/amauribechtoldjr/msk/internal/logger"
+	"github.com/amauribechtoldjr/msk/internal/prompt"
 	"github.com/amauribechtoldjr/msk/internal/validator"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/spf13/cobra"
@@ -30,7 +31,7 @@ func NewUpdateCmd(holder *ServiceHolder) *cobra.Command {
 				return fmt.Errorf("invalid password name: %v", err)
 			}
 
-			password, err := PromptSafeValue("Enter password:")
+			password, err := prompt.PromptSafeValue("Enter password:")
 			if err != nil {
 				return err
 			}

@@ -7,46 +7,21 @@ import (
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
 	"github.com/amauribechtoldjr/msk/internal/format"
+	"github.com/amauribechtoldjr/msk/internal/meta"
 )
 
 func TestNewMSKVault(t *testing.T) {
 	t.Run("should initialize the struct correctly", func(t *testing.T) {
 		var crypt Vault = NewMSKVault()
-		_, ok := crypt.(*MSKVault)
+		_, ok := crypt.(*vault)
 
 		if !ok {
-			t.Fatal("expected and variable of type MSKVault")
+			t.Fatal("expected and variable of type vault")
 		}
 	})
 }
 
-func TestConfigMk(t *testing.T) {
-	t.Run("should set the master key correctly", func(t *testing.T) {
-		crypt := NewMSKVault()
-
-		if crypt.mk != nil {
-			t.Fatal("failed to initialize master key empty")
-		}
-
-		crypt.ConfigMK([]byte("master-key"))
-		if crypt.mk == nil {
-			t.Fatal("expected mk to be set after ConfigMK")
-		}
-
-		buffer, err := crypt.mk.Open()
-		if err != nil {
-			t.Fatal("failed to open the master key enclave buffer")
-		}
-
-		expectedKey := []byte("master-key")
-
-		if !reflect.DeepEqual(buffer.Bytes(), expectedKey) {
-			t.Fatalf("expected key: %v and got: %v", expectedKey, crypt.mk)
-		}
-	})
-}
-
-func newConfiguredCrypt(masterKey string) *MSKVault {
+func newConfiguredCrypt(masterKey string) Vault {
 	crypt := NewMSKVault()
 	crypt.ConfigMK([]byte(masterKey))
 	return crypt
@@ -74,11 +49,11 @@ func TestEncrypt(t *testing.T) {
 			t.Fatal("expected non-empty cipher data")
 		}
 
-		if len(salt) != format.MSK_SALT_SIZE {
+		if len(salt) != meta.MSK_SALT_SIZE {
 			t.Fatal("expected valid salt")
 		}
 
-		if len(nonce) != format.MSK_NONCE_SIZE {
+		if len(nonce) != meta.MSK_NONCE_SIZE {
 			t.Fatal("expected valid nonce")
 		}
 	})
@@ -163,9 +138,9 @@ func TestDecrypt(t *testing.T) {
 	t.Run("should return ErrCorruptedFile when magic value is wrong", func(t *testing.T) {
 		crypt := newConfiguredCrypt("master-password")
 
-		data := make([]byte, format.MSK_HEADER_SIZE+16)
+		data := make([]byte, meta.MSK_HEADER_SIZE+16)
 		copy(data[:3], "BAD")
-		data[3] = format.MSK_FILE_VERSION
+		data[3] = meta.MSK_FILE_VERSION
 
 		_, err := crypt.DecryptSecret(data)
 		if err == nil {
@@ -179,8 +154,8 @@ func TestDecrypt(t *testing.T) {
 
 	t.Run("should return ErrUnsupportedFileVersion when version is wrong", func(t *testing.T) {
 		crypt := newConfiguredCrypt("master-password")
-		data := make([]byte, format.MSK_HEADER_SIZE+16)
-		copy(data[:3], format.MSK_MAGIC_VALUE)
+		data := make([]byte, meta.MSK_HEADER_SIZE+16)
+		copy(data[:3], meta.MSK_MAGIC_VALUE)
 		data[3] = 99
 
 		_, err := crypt.DecryptSecret(data)
@@ -229,7 +204,7 @@ func TestDecrypt(t *testing.T) {
 		}
 
 		// Flip a byte in the cipher data portion
-		encrypted[format.MSK_HEADER_SIZE] ^= 0xFF
+		encrypted[meta.MSK_HEADER_SIZE] ^= 0xFF
 
 		_, err = crypt.DecryptSecret(encrypted)
 		if err == nil {
@@ -243,9 +218,9 @@ func TestDecrypt(t *testing.T) {
 
 	t.Run("should return error when master key is empty", func(t *testing.T) {
 		crypt := NewMSKVault()
-		data := make([]byte, format.MSK_HEADER_SIZE+16)
-		copy(data[:3], format.MSK_MAGIC_VALUE)
-		data[3] = format.MSK_FILE_VERSION
+		data := make([]byte, meta.MSK_HEADER_SIZE+16)
+		copy(data[:3], meta.MSK_MAGIC_VALUE)
+		data[3] = meta.MSK_FILE_VERSION
 
 		_, err := crypt.DecryptSecret(data)
 		if err == nil {

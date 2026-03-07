@@ -8,6 +8,7 @@ import (
 
 	"github.com/amauribechtoldjr/msk/internal/config"
 	"github.com/amauribechtoldjr/msk/internal/logger"
+	"github.com/amauribechtoldjr/msk/internal/prompt"
 	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/spf13/cobra"
 )
@@ -24,7 +25,7 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			conf, err := config.NewConfig("")
+			conf, err := config.NewConfig()
 			if err != nil {
 				return err
 			}
@@ -79,7 +80,7 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 				return fmt.Errorf("failed to create vault directory: %w", err)
 			}
 
-			mk, err := PromptMasterPassword(true)
+			mk, err := prompt.PromptMasterPassword(false)
 			if err != nil {
 				return err
 			}

@@ -7,7 +7,7 @@ import (
 
 func (s *Store) getFilePath(name string) string {
 	return filepath.Join(
-		s.dir,
+		s.Path,
 		strings.ToLower(name)+".msk",
 	)
 }

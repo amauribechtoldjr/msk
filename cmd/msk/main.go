@@ -6,7 +6,6 @@ import (
 	"github.com/amauribechtoldjr/msk/internal/cli"
 	"github.com/amauribechtoldjr/msk/internal/clip"
 	"github.com/amauribechtoldjr/msk/internal/logger"
-	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/awnumar/memguard"
 )
 
@@ -20,9 +19,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	v := vault.NewMSKVault()
-
-	rootCmd := cli.NewMSKCmd(v)
+	rootCmd := cli.NewMSKCmd()
 	if err := rootCmd.Execute(); err != nil {
 		logger.PrintError("%s\n", err)
 		memguard.Purge()

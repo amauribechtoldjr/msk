@@ -1,12 +1,14 @@
 package vault
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"errors"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
 	"github.com/amauribechtoldjr/msk/internal/format"
+	"github.com/amauribechtoldjr/msk/internal/gcm"
+	"github.com/amauribechtoldjr/msk/internal/meta"
+	"github.com/amauribechtoldjr/msk/internal/session"
+
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/awnumar/memguard"
 )
@@ -14,34 +16,34 @@ import (
 var ErrDecryption = errors.New("decryption failed")
 
 type Vault interface {
-	EncryptSecret(secret domain.Secret) ([]byte, error)
-	DecryptSecret(cipherData []byte) (domain.Secret, error)
-	ConfigMK(mk []byte)
+	Encrypt([]byte) ([]byte, error)
+	DecryptSecret([]byte) (domain.Secret, error)
+	ConfigMK([]byte)
 	DestroyMK()
-	CreateSession(token []byte) (nonce []byte, cipherData []byte, err error)
-	LoadSession(token []byte, nonce []byte, cipherData []byte) ([]byte, error)
+	CreateSession(token []byte) (*gcm.SealedCGM, error)
+	LoadSession(bs *session.BinarySession) error
 }
 
-type MSKVault struct {
+type vault struct {
 	mk *memguard.Enclave
 }
 
-func NewMSKVault() *MSKVault {
-	return &MSKVault{}
+func NewMSKVault() Vault {
+	return &vault{}
 }
 
-func (ac *MSKVault) ConfigMK(mk []byte) {
+func (ac *vault) ConfigMK(mk []byte) {
 	buffer := memguard.NewBufferFromBytes(mk)
 	ac.mk = buffer.Seal()
 }
 
 // DestroyMK wipes all memguard-managed memory and releases the master key reference.
-func (ac *MSKVault) DestroyMK() {
+func (ac *vault) DestroyMK() {
 	memguard.Purge()
 	ac.mk = nil
 }
 
-func (a *MSKVault) DecryptSecret(cipherData []byte) (domain.Secret, error) {
+func (a *vault) DecryptSecret(cipherData []byte) (domain.Secret, error) {
 	salt, nonce, data, err := format.UnmarshalFile(cipherData)
 	if err != nil {
 		return domain.Secret{}, err
@@ -64,7 +66,7 @@ func (a *MSKVault) DecryptSecret(cipherData []byte) (domain.Secret, error) {
 	}
 	defer wipe.Bytes(key)
 
-	fileBytes, err := openGCM(nonce, key, data)
+	fileBytes, err := gcm.OpenGCM(nonce, key, data)
 	if err != nil {
 		return domain.Secret{}, ErrDecryption
 	}
@@ -78,8 +80,8 @@ func (a *MSKVault) DecryptSecret(cipherData []byte) (domain.Secret, error) {
 	return secret, nil
 }
 
-func (a *MSKVault) EncryptSecret(secret domain.Secret) ([]byte, error) {
-	salt, err := format.RandomBytes(format.MSK_SALT_SIZE)
+func (a *vault) Encrypt(fileBytes []byte) ([]byte, error) {
+	salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 	if err != nil {
 		return nil, err
 	}
@@ -101,91 +103,53 @@ func (a *MSKVault) EncryptSecret(secret domain.Secret) ([]byte, error) {
 	}
 	defer wipe.Bytes(key)
 
-	fileBytes := format.MarshalSecret(secret)
-
-	nonce, cipherData, err := sealGCM(key, fileBytes)
+	sealedGCM, err := gcm.SealGCM(key, fileBytes)
 	if err != nil {
 		return nil, err
 	}
 	defer wipe.Bytes(fileBytes)
-	defer wipe.Bytes(cipherData)
 
-	return format.MarshalFile(salt, nonce, cipherData)
+	return format.MarshalFile(salt, sealedGCM.Nonce, sealedGCM.CipherData)
 }
 
-func (a *MSKVault) CreateSession(token []byte) (nonce []byte, cipherData []byte, err error) {
+func (a *vault) CreateSession(token []byte) (*gcm.SealedCGM, error) {
 	if a.mk == nil {
-		return nil, nil, errors.New("failed to load master key")
+		return nil, errors.New("failed to load master key")
 	}
 
 	lockedBuffer, err := a.mk.Open()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer lockedBuffer.Destroy()
 
-	hasher := &TokenHasher{}
-	key, err := hasher.getSessionToken(token)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer wipe.Bytes(key)
-
-	nonce, cipherData, err = sealGCM(key, lockedBuffer.Bytes())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return nonce, cipherData, nil
-}
-
-func (a *MSKVault) LoadSession(token []byte, nonce []byte, cipherData []byte) ([]byte, error) {
-	hasher := &TokenHasher{}
-	key, err := hasher.getSessionToken(token)
+	key, err := DeriveSessionToken(token)
 	if err != nil {
 		return nil, err
 	}
 	defer wipe.Bytes(key)
 
-	mk, err := openGCM(nonce, key, cipherData)
-	if err != nil {
-		return nil, ErrDecryption
-	}
-
-	return mk, nil
-}
-
-func sealGCM(key []byte, fileBytes []byte) (nonce []byte, cipherData []byte, err error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	nonce, err = format.RandomBytes(gcm.NonceSize())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return nonce, gcm.Seal(nil, nonce, fileBytes, nil), nil
-}
-
-func openGCM(nonce, key, data []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
+	sealedGCM, err := gcm.SealGCM(key, lockedBuffer.Bytes())
 	if err != nil {
 		return nil, err
 	}
 
-	gcm, err := cipher.NewGCM(block)
+	return sealedGCM, nil
+}
+
+func (a *vault) LoadSession(bs *session.BinarySession) error {
+	key, err := DeriveSessionToken(bs.Token)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	defer wipe.Bytes(key)
+
+	mk, err := gcm.OpenGCM(bs.Nonce[:], key, bs.CipherData)
+	if err != nil {
+		return ErrDecryption
 	}
 
-	fileBytes, err := gcm.Open(nil, nonce, data, nil)
+	a.ConfigMK(mk)
 
-	return fileBytes, err
+	return nil
 }

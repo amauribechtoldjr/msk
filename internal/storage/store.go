@@ -2,7 +2,6 @@ package storage
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,16 +19,15 @@ type Repository interface {
 }
 
 type Store struct {
-	dir string
+	Path string
 }
 
-func NewStore(dir string) (*Store, error) {
-	fmt.Printf("dir of new store: %v\n", dir)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+func NewStore(path string) (*Store, error) {
+	if err := os.MkdirAll(path, 0o700); err != nil {
 		return nil, err
 	}
 
-	return &Store{dir: dir}, nil
+	return &Store{path}, nil
 }
 
 func (s *Store) SaveFile(encryptedFile []byte, name string) error {
@@ -114,7 +112,7 @@ func (s *Store) FileExists(name string) bool {
 }
 
 func (s *Store) GetFiles() ([]string, error) {
-	files, err := os.ReadDir(s.dir)
+	files, err := os.ReadDir(s.Path)
 	if err != nil {
 		return nil, err
 	}

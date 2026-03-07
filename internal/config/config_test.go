@@ -11,8 +11,8 @@ import (
 
 func newTestConfig(t *testing.T) *Config {
 	t.Helper()
-	tmpDir := t.TempDir()
-	cfg, err := NewConfig(filepath.Join(tmpDir, "config.msk"))
+	t.Setenv("AppData", t.TempDir())
+	cfg, err := NewConfig()
 	if err != nil {
 		t.Fatalf("NewConfig failed: %v", err)
 	}

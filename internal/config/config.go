@@ -2,11 +2,11 @@ package config
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
+	"github.com/amauribechtoldjr/msk/internal/format"
 	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 )
@@ -22,11 +22,7 @@ type Config struct {
 	Path string
 }
 
-func NewConfig(path string) (*Config, error) {
-	if path != "" {
-		return &Config{Path: path}, nil
-	}
-
+func NewConfig() (*Config, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return &Config{}, err
@@ -65,8 +61,6 @@ func (c *Config) Load(vault vault.Vault) (string, error) {
 	}
 	defer wipe.Bytes(secret.Password)
 
-	fmt.Printf("vault path: %v\n", string(secret.Password))
-
 	if secret.Name != MSK_CONFIG_NAME {
 		return "", ErrInvalidConfig
 	}
@@ -84,7 +78,9 @@ func (c *Config) Save(vault vault.Vault, vaultPath string) error {
 		Password: []byte(vaultPath),
 	}
 
-	encrypted, err := vault.EncryptSecret(secret)
+	fileBytes := format.MarshalSecret(secret)
+
+	encrypted, err := vault.Encrypt(fileBytes)
 	if err != nil {
 		return err
 	}

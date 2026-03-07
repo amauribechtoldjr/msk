@@ -3,7 +3,7 @@ package vault
 import (
 	"errors"
 
-	"github.com/amauribechtoldjr/msk/internal/format"
+	"github.com/amauribechtoldjr/msk/internal/meta"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -16,7 +16,7 @@ var ErrInvalidPass = errors.New("invalid master pass")
 type SecretKeyDeriver struct{}
 
 func (s *SecretKeyDeriver) getSecretKey(password, salt []byte) ([]byte, error) {
-	if len(salt) != format.MSK_SALT_SIZE {
+	if len(salt) != meta.MSK_SALT_SIZE {
 		return nil, ErrInvalidSalt
 	}
 

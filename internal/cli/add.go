@@ -7,6 +7,7 @@ import (
 	clip "github.com/amauribechtoldjr/msk/internal/clip"
 	"github.com/amauribechtoldjr/msk/internal/generator"
 	"github.com/amauribechtoldjr/msk/internal/logger"
+	"github.com/amauribechtoldjr/msk/internal/prompt"
 	"github.com/amauribechtoldjr/msk/internal/validator"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/spf13/cobra"
@@ -44,7 +45,7 @@ func NewAddCmd(holder *ServiceHolder) *cobra.Command {
 					return fmt.Errorf("failed to generate password: %w", err)
 				}
 			} else {
-				password, err = PromptSafeValue("Enter password:")
+				password, err = prompt.PromptSafeValue("Enter password:")
 				if err != nil {
 					return err
 				}

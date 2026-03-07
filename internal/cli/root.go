@@ -1,29 +1,25 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 	"slices"
 
 	"github.com/amauribechtoldjr/msk/internal/app"
-	"github.com/amauribechtoldjr/msk/internal/config"
 	"github.com/amauribechtoldjr/msk/internal/logger"
 	"github.com/amauribechtoldjr/msk/internal/meta"
-	"github.com/amauribechtoldjr/msk/internal/session"
-	"github.com/amauribechtoldjr/msk/internal/storage"
 	"github.com/amauribechtoldjr/msk/internal/vault"
-	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/spf13/cobra"
 )
 
 type ServiceHolder struct {
-	Service *app.MSKService
+	Service app.Service
 }
 
 var ignored_commands = []string{"version", "v", "help", "unlock", "lock", "config"}
 
-func NewMSKCmd(vault vault.Vault) *cobra.Command {
+func NewMSKCmd() *cobra.Command {
 	holder := &ServiceHolder{}
+	v := vault.NewMSKVault()
 
 	cmd := &cobra.Command{
 		Use:   "msk",
@@ -49,55 +45,15 @@ func NewMSKCmd(vault vault.Vault) *cobra.Command {
 				return nil
 			}
 
-			var mk []byte
-			if token := os.Getenv("MSK_SESSION"); token != "" {
-				session, err := session.New()
-				if err != nil {
-					return err
-				}
-
-				mk, err = session.Load(token, vault)
-				if err != nil {
-					session.Destroy()
-					return err
-				}
-			} else {
-				mk, err = PromptMasterPassword(false)
-				if err != nil {
-					return err
-				}
-			}
-			defer wipe.Bytes(mk)
-
-			vault.ConfigMK(mk)
-
-			conf, err := config.NewConfig("")
+			holder.Service, err = app.BootstrapWithAuth(v)
 			if err != nil {
 				return err
 			}
 
-			// TODO: refactor this
-			vaultPath, err := conf.Load(vault)
-			if err != nil {
-				vault.DestroyMK()
-				return err
-			}
-
-			fmt.Printf("vault path after load: %v\n", vaultPath)
-
-			store, err := storage.NewStore(vaultPath)
-			if err != nil {
-				vault.DestroyMK()
-				return err
-			}
-
-			holder.Service = app.NewMSKService(store, vault)
 			return nil
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-			if holder.Service != nil {
-				holder.Service.DestroyMK()
-			}
+			v.DestroyMK()
 
 			return nil
 		},
@@ -131,13 +87,13 @@ func NewMSKCmd(vault vault.Vault) *cobra.Command {
 	updateCmd := NewUpdateCmd(holder)
 	cmd.AddCommand(updateCmd)
 
-	configCmd := NewConfigCmd(vault)
+	configCmd := NewConfigCmd(v)
 	cmd.AddCommand(configCmd)
 
 	versionCmd := NewVersionCmd()
 	cmd.AddCommand(versionCmd)
 
-	unlockCmd := NewUnlockCmd(vault)
+	unlockCmd := NewUnlockCmd(v)
 	cmd.AddCommand(unlockCmd)
 
 	lockCmd := NewLockCmd()

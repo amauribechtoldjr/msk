@@ -6,17 +6,17 @@ import (
 	"testing"
 
 	"github.com/amauribechtoldjr/msk/internal/format"
+	"github.com/amauribechtoldjr/msk/internal/meta"
 )
 
 func TestGetSessionToken(t *testing.T) {
 	t.Run("should return exactly 32 bytes", func(t *testing.T) {
-		hasher := &TokenHasher{}
-		token, err := format.RandomBytes(SESSION_TOKEN_SIZE)
+		token, err := format.RandomBytes(meta.SESSION_TOKEN_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate token")
 		}
 
-		key, err := hasher.getSessionToken(token)
+		key, err := DeriveSessionToken(token)
 		if err != nil {
 			t.Fatal("failed to derive session key")
 		}
@@ -27,18 +27,17 @@ func TestGetSessionToken(t *testing.T) {
 	})
 
 	t.Run("should produce identical output for same token", func(t *testing.T) {
-		hasher := &TokenHasher{}
-		token, err := format.RandomBytes(SESSION_TOKEN_SIZE)
+		token, err := format.RandomBytes(meta.SESSION_TOKEN_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate token")
 		}
 
-		key1, err := hasher.getSessionToken(token)
+		key1, err := DeriveSessionToken(token)
 		if err != nil {
 			t.Fatal("failed to derive session key")
 		}
 
-		key2, err := hasher.getSessionToken(token)
+		key2, err := DeriveSessionToken(token)
 		if err != nil {
 			t.Fatal("failed to derive session key")
 		}
@@ -49,23 +48,22 @@ func TestGetSessionToken(t *testing.T) {
 	})
 
 	t.Run("should produce different output for different tokens", func(t *testing.T) {
-		hasher := &TokenHasher{}
-		token1, err := format.RandomBytes(SESSION_TOKEN_SIZE)
+		token1, err := format.RandomBytes(meta.SESSION_TOKEN_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate token")
 		}
 
-		token2, err := format.RandomBytes(SESSION_TOKEN_SIZE)
+		token2, err := format.RandomBytes(meta.SESSION_TOKEN_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate token")
 		}
 
-		key1, err := hasher.getSessionToken(token1)
+		key1, err := DeriveSessionToken(token1)
 		if err != nil {
 			t.Fatal("failed to derive session key")
 		}
 
-		key2, err := hasher.getSessionToken(token2)
+		key2, err := DeriveSessionToken(token2)
 		if err != nil {
 			t.Fatal("failed to derive session key")
 		}
@@ -76,29 +74,26 @@ func TestGetSessionToken(t *testing.T) {
 	})
 
 	t.Run("should return error when empty token", func(t *testing.T) {
-		hasher := &TokenHasher{}
-		_, err := hasher.getSessionToken([]byte{})
+		_, err := DeriveSessionToken([]byte{})
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
 	t.Run("should return error when nil token", func(t *testing.T) {
-		hasher := &TokenHasher{}
-		_, err := hasher.getSessionToken(nil)
+		_, err := DeriveSessionToken(nil)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
 	t.Run("should match sha256 sum of token", func(t *testing.T) {
-		hasher := &TokenHasher{}
-		token, err := format.RandomBytes(SESSION_TOKEN_SIZE)
+		token, err := format.RandomBytes(meta.SESSION_TOKEN_SIZE)
 		if err != nil {
 			t.Fatal("failed to generate token")
 		}
 
-		key, err := hasher.getSessionToken(token)
+		key, err := DeriveSessionToken(token)
 		if err != nil {
 			t.Fatal("failed to derive session key")
 		}

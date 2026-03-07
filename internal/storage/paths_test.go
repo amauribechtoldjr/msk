@@ -10,9 +10,9 @@ var FILE_EXT = "msk"
 
 func TestGetFilePath(t *testing.T) {
 	secretName := "mysecret"
-	store := &Store{dir: t.TempDir()}
+	store := &Store{Path: t.TempDir()}
 	expected := filepath.Join(
-		store.dir,
+		store.Path,
 		strings.Join([]string{secretName, FILE_EXT}, "."),
 	)
 
@@ -27,9 +27,9 @@ func TestGetFilePath(t *testing.T) {
 
 func TestGetFilePathLowerCase(t *testing.T) {
 	secretName := "MYSECRET"
-	store := &Store{dir: t.TempDir()}
+	store := &Store{Path: t.TempDir()}
 	expected := filepath.Join(
-		store.dir,
+		store.Path,
 		strings.Join([]string{strings.ToLower(secretName), FILE_EXT}, "."),
 	)
 
