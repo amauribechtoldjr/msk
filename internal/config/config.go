@@ -83,18 +83,7 @@ func (c *Config) Save(vault vault.Vault, vaultPath string) error {
 		return err
 	}
 
-	// TODO: refactor to use SaveFile
-	tmpPath := c.Path + ".tmp"
-	if err := os.WriteFile(tmpPath, finalBytes, 0o600); err != nil {
-		return err
-	}
-
-	if err := os.Rename(tmpPath, c.Path); err != nil {
-		os.Remove(tmpPath)
-		return err
-	}
-
-	return nil
+	return files.WriteFile(c.Path, finalBytes, 0o600)
 }
 
 func (c *Config) DefaultVaultPath() (string, error) {

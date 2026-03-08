@@ -98,17 +98,7 @@ func (s *session) StoreSession(sealedGCM *gcm.SealedCGM) error {
 		return err
 	}
 
-	tmpPath := s.path + ".tmp"
-	if err := os.WriteFile(tmpPath, file, 0o600); err != nil {
-		return err
-	}
-
-	if err := os.Rename(tmpPath, s.path); err != nil {
-		os.Remove(tmpPath)
-		return err
-	}
-
-	return nil
+	return files.WriteFile(s.path, file, 0o600)
 }
 
 func (s *session) Refresh() error {
@@ -125,15 +115,7 @@ func (s *session) Refresh() error {
 	newExpiry := time.Now().Add(meta.SESSION_TTL).Unix()
 	binary.BigEndian.PutUint64(data[meta.SESSION_NONCE_SIZE:meta.SESSION_HEADER_SIZE], uint64(newExpiry))
 
-	tmpPath := s.path + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0o600); err != nil {
-		return err
-	}
-	if err := os.Rename(tmpPath, s.path); err != nil {
-		os.Remove(tmpPath)
-		return err
-	}
-	return nil
+	return files.WriteFile(s.path, data, 0o600)
 }
 
 func (s *session) Destroy() error {

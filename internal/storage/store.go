@@ -3,7 +3,6 @@ package storage
 import (
 	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/amauribechtoldjr/msk/internal/files"
@@ -33,42 +32,7 @@ func NewStore(path string) (*Store, error) {
 }
 
 func (s *Store) SaveFile(encryptedFile []byte, name string) error {
-	path := s.getFilePath(name)
-	tmpPath := path + ".tmp"
-
-	tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		tmpFile.Close()
-		os.Remove(tmpPath)
-	}()
-
-	if _, err := tmpFile.Write(encryptedFile); err != nil {
-		return err
-	}
-
-	if err := tmpFile.Sync(); err != nil {
-		return err
-	}
-
-	if err := tmpFile.Close(); err != nil {
-		return err
-	}
-
-	if err := os.Rename(tmpPath, path); err != nil {
-		return err
-	}
-
-	dir, err := os.Open(filepath.Dir(path))
-	if err == nil {
-		defer dir.Close()
-		_ = dir.Sync()
-	}
-
-	return nil
+	return files.WriteFile(s.getFilePath(name), encryptedFile, 0o600)
 }
 
 func (s *Store) GetFile(name string) ([]byte, error) {
