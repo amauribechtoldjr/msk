@@ -12,6 +12,12 @@ type SealedCGM struct {
 	CipherData []byte
 }
 
+type SaltedGCM struct {
+	Nonce      []byte
+	CipherData []byte
+	Salt       []byte
+}
+
 func SealGCM(key []byte, fileBytes []byte) (*SealedCGM, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {

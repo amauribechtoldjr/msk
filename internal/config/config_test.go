@@ -6,7 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	encryption "github.com/amauribechtoldjr/msk/internal/vault"
+	"github.com/amauribechtoldjr/msk/internal/files"
+	"github.com/amauribechtoldjr/msk/internal/vault"
 )
 
 func newTestConfig(t *testing.T) *Config {
@@ -23,7 +24,7 @@ func TestSaveAndLoad(t *testing.T) {
 	t.Run("should save and load vault path with correct key", func(t *testing.T) {
 		cfg := newTestConfig(t)
 
-		vault := encryption.NewMSKVault()
+		vault := vault.NewMSKVault()
 		vault.ConfigMK([]byte("test-master-key"))
 
 		vaultPath := "/home/user/.msk/vault"
@@ -47,7 +48,7 @@ func TestLoadWrongKey(t *testing.T) {
 	t.Run("should return ErrInvalidConfig with wrong key", func(t *testing.T) {
 		cfg := newTestConfig(t)
 
-		vault := encryption.NewMSKVault()
+		vault := vault.NewMSKVault()
 		vault.ConfigMK([]byte("correct-key"))
 
 		err := cfg.Save(vault, "/some/path")
@@ -68,7 +69,7 @@ func TestLoadNotFound(t *testing.T) {
 	t.Run("should return ErrConfigNotFound when file does not exist", func(t *testing.T) {
 		cfg := newTestConfig(t)
 
-		vault := encryption.NewMSKVault()
+		vault := vault.NewMSKVault()
 		vault.ConfigMK([]byte("some-key"))
 
 		_, err := cfg.Load(vault)
@@ -82,7 +83,7 @@ func TestExists(t *testing.T) {
 	t.Run("should return false when config does not exist", func(t *testing.T) {
 		cfg := newTestConfig(t)
 
-		exists, err := cfg.Exists()
+		exists, err := files.FileExists(cfg.Path)
 		if err != nil {
 			t.Fatalf("Exists failed: %v", err)
 		}
@@ -95,7 +96,7 @@ func TestExists(t *testing.T) {
 	t.Run("should return true when config exists", func(t *testing.T) {
 		cfg := newTestConfig(t)
 
-		vault := encryption.NewMSKVault()
+		vault := vault.NewMSKVault()
 		vault.ConfigMK([]byte("test-key"))
 
 		err := cfg.Save(vault, "/some/path")
@@ -103,7 +104,7 @@ func TestExists(t *testing.T) {
 			t.Fatalf("Save failed: %v", err)
 		}
 
-		exists, err := cfg.Exists()
+		exists, err := files.FileExists(cfg.Path)
 		if err != nil {
 			t.Fatalf("Exists failed: %v", err)
 		}

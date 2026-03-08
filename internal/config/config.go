@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
+	"github.com/amauribechtoldjr/msk/internal/files"
 	"github.com/amauribechtoldjr/msk/internal/format"
 	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
@@ -23,41 +24,33 @@ type Config struct {
 }
 
 func NewConfig() (*Config, error) {
-	configDir, err := os.UserConfigDir()
+	path, err := files.MSKConfigPath("config.msk")
 	if err != nil {
 		return &Config{}, err
 	}
 
-	return &Config{Path: filepath.Join(configDir, "msk", "config.msk")}, nil
-}
-
-func (c *Config) Exists() (bool, error) {
-	_, err := os.Stat(c.Path)
-	if err == nil {
-		return true, nil
-	}
-
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-
-	return false, err
+	return &Config{Path: path}, nil
 }
 
 func (c *Config) Load(vault vault.Vault) (string, error) {
-	data, err := os.ReadFile(c.Path)
+	data, err := files.ReadFile(c.Path, ErrConfigNotFound)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return "", ErrConfigNotFound
-		}
 		return "", err
 	}
 
-	// TODO: Refactor this, DecryptSecret it's returning a domain.Secret in this case,
-	// but this value it's the vault path
-	secret, err := vault.DecryptSecret(data)
+	salt, nonce, data, err := format.UnmarshalFile(data)
+	if err != nil {
+		return "", err
+	}
+
+	decryptedBytes, err := vault.Decrypt(salt, nonce, data)
 	if err != nil {
 		return "", ErrInvalidConfig
+	}
+
+	secret, err := format.UnmarshalSecret(decryptedBytes)
+	if err != nil {
+		return "", err
 	}
 	defer wipe.Bytes(secret.Password)
 
@@ -80,22 +73,17 @@ func (c *Config) Save(vault vault.Vault, vaultPath string) error {
 
 	fileBytes := format.MarshalSecret(secret)
 
-	encrypted, err := vault.Encrypt(fileBytes)
+	saltedGCM, err := vault.Encrypt(fileBytes)
 	if err != nil {
 		return err
 	}
 
-	tmpPath := c.Path + ".tmp"
-	if err := os.WriteFile(tmpPath, encrypted, 0o600); err != nil {
+	finalBytes, err := format.MarshalFile(saltedGCM.Salt, saltedGCM.Nonce, saltedGCM.CipherData)
+	if err != nil {
 		return err
 	}
 
-	if err := os.Rename(tmpPath, c.Path); err != nil {
-		os.Remove(tmpPath)
-		return err
-	}
-
-	return nil
+	return files.WriteAtomicFile(c.Path, finalBytes, 0o600)
 }
 
 func (c *Config) DefaultVaultPath() (string, error) {

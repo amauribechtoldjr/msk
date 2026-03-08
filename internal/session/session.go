@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/amauribechtoldjr/msk/internal/files"
 	"github.com/amauribechtoldjr/msk/internal/format"
 	"github.com/amauribechtoldjr/msk/internal/gcm"
 	"github.com/amauribechtoldjr/msk/internal/meta"
@@ -38,23 +39,18 @@ type BinarySession struct {
 }
 
 func New() (Session, error) {
-	configDir, err := os.UserConfigDir()
+	path, err := files.MSKConfigPath("session.msk")
 	if err != nil {
 		return nil, err
 	}
 
-	return &session{
-		path: filepath.Join(configDir, "msk", "session.msk"),
-	}, nil
+	return &session{path: path}, nil
 }
 
 func (s *session) LoadFile(token string) (*BinarySession, error) {
-	data, err := os.ReadFile(s.path)
+	data, err := files.ReadFile(s.path, ErrSessionNotFound)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return &BinarySession{}, ErrSessionNotFound
-		}
-		return nil, ErrSessionInvalid
+		return nil, err
 	}
 
 	if len(data) < meta.SESSION_HEADER_SIZE+1 {
@@ -102,25 +98,12 @@ func (s *session) StoreSession(sealedGCM *gcm.SealedCGM) error {
 		return err
 	}
 
-	tmpPath := s.path + ".tmp"
-	if err := os.WriteFile(tmpPath, file, 0o600); err != nil {
-		return err
-	}
-
-	if err := os.Rename(tmpPath, s.path); err != nil {
-		os.Remove(tmpPath)
-		return err
-	}
-
-	return nil
+	return files.WriteAtomicFile(s.path, file, 0o600)
 }
 
 func (s *session) Refresh() error {
-	data, err := os.ReadFile(s.path)
+	data, err := files.ReadFile(s.path, ErrSessionNotFound)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return ErrSessionNotFound
-		}
 		return err
 	}
 	defer wipe.Bytes(data)
@@ -132,15 +115,7 @@ func (s *session) Refresh() error {
 	newExpiry := time.Now().Add(meta.SESSION_TTL).Unix()
 	binary.BigEndian.PutUint64(data[meta.SESSION_NONCE_SIZE:meta.SESSION_HEADER_SIZE], uint64(newExpiry))
 
-	tmpPath := s.path + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0o600); err != nil {
-		return err
-	}
-	if err := os.Rename(tmpPath, s.path); err != nil {
-		os.Remove(tmpPath)
-		return err
-	}
-	return nil
+	return files.WriteAtomicFile(s.path, data, 0o600)
 }
 
 func (s *session) Destroy() error {
