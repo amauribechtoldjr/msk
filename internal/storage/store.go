@@ -72,16 +72,7 @@ func (s *Store) SaveFile(encryptedFile []byte, name string) error {
 }
 
 func (s *Store) GetFile(name string) ([]byte, error) {
-	data, err := os.ReadFile(s.getFilePath(name))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, ErrNotFound
-		}
-
-		return nil, err
-	}
-
-	return data, nil
+	return files.ReadFile(s.getFilePath(name), ErrNotFound)
 }
 
 func (s *Store) FileExists(name string) (bool, error) {

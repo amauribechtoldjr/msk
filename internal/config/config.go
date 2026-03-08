@@ -33,11 +33,8 @@ func NewConfig() (*Config, error) {
 }
 
 func (c *Config) Load(vault vault.Vault) (string, error) {
-	data, err := os.ReadFile(c.Path)
+	data, err := files.ReadFile(c.Path, ErrConfigNotFound)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return "", ErrConfigNotFound
-		}
 		return "", err
 	}
 

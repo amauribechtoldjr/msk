@@ -48,12 +48,9 @@ func New() (Session, error) {
 }
 
 func (s *session) LoadFile(token string) (*BinarySession, error) {
-	data, err := os.ReadFile(s.path)
+	data, err := files.ReadFile(s.path, ErrSessionNotFound)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return &BinarySession{}, ErrSessionNotFound
-		}
-		return nil, ErrSessionInvalid
+		return nil, err
 	}
 
 	if len(data) < meta.SESSION_HEADER_SIZE+1 {
@@ -115,11 +112,8 @@ func (s *session) StoreSession(sealedGCM *gcm.SealedCGM) error {
 }
 
 func (s *session) Refresh() error {
-	data, err := os.ReadFile(s.path)
+	data, err := files.ReadFile(s.path, ErrSessionNotFound)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return ErrSessionNotFound
-		}
 		return err
 	}
 	defer wipe.Bytes(data)
