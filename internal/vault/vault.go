@@ -3,7 +3,6 @@ package vault
 import (
 	"errors"
 
-	"github.com/amauribechtoldjr/msk/internal/domain"
 	"github.com/amauribechtoldjr/msk/internal/format"
 	"github.com/amauribechtoldjr/msk/internal/gcm"
 	"github.com/amauribechtoldjr/msk/internal/meta"
@@ -16,8 +15,8 @@ import (
 var ErrDecryption = errors.New("decryption failed")
 
 type Vault interface {
-	Encrypt([]byte) ([]byte, error)
-	DecryptSecret([]byte) (domain.Secret, error)
+	Encrypt([]byte) (*gcm.SaltedGCM, error)
+	Decrypt(salt, nonce, data []byte) ([]byte, error)
 	ConfigMK([]byte)
 	DestroyMK()
 	CreateSession(token []byte) (*gcm.SealedCGM, error)
@@ -43,44 +42,32 @@ func (ac *vault) DestroyMK() {
 	ac.mk = nil
 }
 
-func (a *vault) DecryptSecret(cipherData []byte) (domain.Secret, error) {
-	salt, nonce, data, err := format.UnmarshalFile(cipherData)
-	if err != nil {
-		return domain.Secret{}, err
-	}
-
+func (a *vault) Decrypt(salt, nonce, data []byte) ([]byte, error) {
 	if a.mk == nil {
-		return domain.Secret{}, errors.New("failed to load master key")
+		return nil, errors.New("failed to load master key")
 	}
 
 	lockedBuffer, err := a.mk.Open()
 	if err != nil {
-		return domain.Secret{}, err
+		return nil, err
 	}
 	defer lockedBuffer.Destroy()
 
-	deriver := &SecretKeyDeriver{}
-	key, err := deriver.getSecretKey(lockedBuffer.Bytes(), salt)
+	key, err := DeriveArgonKey(lockedBuffer.Bytes(), salt)
 	if err != nil {
-		return domain.Secret{}, err
+		return nil, err
 	}
 	defer wipe.Bytes(key)
 
 	fileBytes, err := gcm.OpenGCM(nonce, key, data)
 	if err != nil {
-		return domain.Secret{}, ErrDecryption
-	}
-	defer wipe.Bytes(fileBytes)
-
-	secret, err := format.UnmarshalSecret(fileBytes)
-	if err != nil {
-		return domain.Secret{}, err
+		return nil, ErrDecryption
 	}
 
-	return secret, nil
+	return fileBytes, nil
 }
 
-func (a *vault) Encrypt(fileBytes []byte) ([]byte, error) {
+func (a *vault) Encrypt(fileBytes []byte) (*gcm.SaltedGCM, error) {
 	salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 	if err != nil {
 		return nil, err
@@ -96,8 +83,7 @@ func (a *vault) Encrypt(fileBytes []byte) ([]byte, error) {
 	}
 	defer lockedBuffer.Destroy()
 
-	deriver := &SecretKeyDeriver{}
-	key, err := deriver.getSecretKey(lockedBuffer.Bytes(), salt)
+	key, err := DeriveArgonKey(lockedBuffer.Bytes(), salt)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +95,7 @@ func (a *vault) Encrypt(fileBytes []byte) ([]byte, error) {
 	}
 	defer wipe.Bytes(fileBytes)
 
-	return format.MarshalFile(salt, sealedGCM.Nonce, sealedGCM.CipherData)
+	return &gcm.SaltedGCM{Nonce: sealedGCM.Nonce, Salt: salt, CipherData: sealedGCM.CipherData}, nil
 }
 
 func (a *vault) CreateSession(token []byte) (*gcm.SealedCGM, error) {

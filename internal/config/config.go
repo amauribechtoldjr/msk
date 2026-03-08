@@ -53,11 +53,19 @@ func (c *Config) Load(vault vault.Vault) (string, error) {
 		return "", err
 	}
 
-	// TODO: Refactor this, DecryptSecret it's returning a domain.Secret in this case,
-	// but this value it's the vault path
-	secret, err := vault.DecryptSecret(data)
+	salt, nonce, data, err := format.UnmarshalFile(data)
+	if err != nil {
+		return "", err
+	}
+
+	decryptedBytes, err := vault.Decrypt(salt, nonce, data)
 	if err != nil {
 		return "", ErrInvalidConfig
+	}
+
+	secret, err := format.UnmarshalSecret(decryptedBytes)
+	if err != nil {
+		return "", err
 	}
 	defer wipe.Bytes(secret.Password)
 
@@ -80,13 +88,19 @@ func (c *Config) Save(vault vault.Vault, vaultPath string) error {
 
 	fileBytes := format.MarshalSecret(secret)
 
-	encrypted, err := vault.Encrypt(fileBytes)
+	saltedGCM, err := vault.Encrypt(fileBytes)
 	if err != nil {
 		return err
 	}
 
+	finalBytes, err := format.MarshalFile(saltedGCM.Salt, saltedGCM.Nonce, saltedGCM.CipherData)
+	if err != nil {
+		return err
+	}
+
+	// TODO: refactor to use SaveFile
 	tmpPath := c.Path + ".tmp"
-	if err := os.WriteFile(tmpPath, encrypted, 0o600); err != nil {
+	if err := os.WriteFile(tmpPath, finalBytes, 0o600); err != nil {
 		return err
 	}
 

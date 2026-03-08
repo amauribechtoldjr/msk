@@ -54,14 +54,19 @@ func (s *MSKService) AddSecret(name string, rawP []byte) error {
 	}
 	defer wipe.Bytes(secret.Password)
 
-	fileBytes := format.MarshalSecret(secret)
+	secretBytes := format.MarshalSecret(secret)
 
-	encryptionResult, err := s.vault.Encrypt(fileBytes)
+	saltedGCM, err := s.vault.Encrypt(secretBytes)
 	if err != nil {
 		return err
 	}
 
-	return s.repo.SaveFile(encryptionResult, name)
+	fileBytes, err := format.MarshalFile(saltedGCM.Salt, saltedGCM.Nonce, saltedGCM.CipherData)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.SaveFile(fileBytes, name)
 }
 
 func (s *MSKService) UpdateSecret(name string, rawP []byte) error {
@@ -75,14 +80,19 @@ func (s *MSKService) UpdateSecret(name string, rawP []byte) error {
 	}
 	defer wipe.Bytes(secret.Password)
 
-	fileBytes := format.MarshalSecret(secret)
+	secretBytes := format.MarshalSecret(secret)
 
-	encryptionResult, err := s.vault.Encrypt(fileBytes)
+	saltedGCM, err := s.vault.Encrypt(secretBytes)
 	if err != nil {
 		return err
 	}
 
-	return s.repo.SaveFile(encryptionResult, name)
+	fileBytes, err := format.MarshalFile(saltedGCM.Salt, saltedGCM.Nonce, saltedGCM.CipherData)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.SaveFile(fileBytes, name)
 }
 
 func (s *MSKService) GetSecret(name string) ([]byte, error) {
@@ -95,12 +105,23 @@ func (s *MSKService) GetSecret(name string) ([]byte, error) {
 		return nil, err
 	}
 
-	secretData, err := s.vault.DecryptSecret(fileData)
+	salt, nonce, data, err := format.UnmarshalFile(fileData)
 	if err != nil {
 		return nil, err
 	}
 
-	return secretData.Password, nil
+	decryptedBytes, err := s.vault.Decrypt(salt, nonce, data)
+	if err != nil {
+		return nil, err
+	}
+	defer wipe.Bytes(decryptedBytes)
+
+	secret, err := format.UnmarshalSecret(decryptedBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return secret.Password, nil
 }
 
 func (s *MSKService) ListSecrets() ([]string, error) {
