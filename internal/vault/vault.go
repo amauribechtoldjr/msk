@@ -31,91 +31,104 @@ func NewMSKVault() Vault {
 	return &vault{}
 }
 
-func (ac *vault) ConfigMK(mk []byte) {
+func (v *vault) ConfigMK(mk []byte) {
 	buffer := memguard.NewBufferFromBytes(mk)
-	ac.mk = buffer.Seal()
+	v.mk = buffer.Seal()
 }
 
-// DestroyMK wipes all memguard-managed memory and releases the master key reference.
-func (ac *vault) DestroyMK() {
+func (v *vault) DestroyMK() {
 	memguard.Purge()
-	ac.mk = nil
+	v.mk = nil
 }
 
-func (a *vault) Decrypt(salt, nonce, data []byte) ([]byte, error) {
-	if a.mk == nil {
-		return nil, errors.New("failed to load master key")
+func (v *vault) withMk(fn func(mk []byte) error) error {
+	if v.mk == nil {
+		return errors.New("failed to load master key")
 	}
 
-	lockedBuffer, err := a.mk.Open()
+	lockedBuffer, err := v.mk.Open()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer lockedBuffer.Destroy()
 
-	key, err := DeriveArgonKey(lockedBuffer.Bytes(), salt)
+	return fn(lockedBuffer.Bytes())
+}
+
+func (v *vault) Decrypt(salt, nonce, data []byte) ([]byte, error) {
+	var fileBytes []byte
+
+	err := v.withMk(func(mk []byte) error {
+		key, err := DeriveArgonKey(mk, salt)
+		if err != nil {
+			return err
+		}
+		defer wipe.Bytes(key)
+
+		fileBytes, err = gcm.OpenGCM(nonce, key, data)
+		if err != nil {
+			return ErrDecryption
+		}
+
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
-	}
-	defer wipe.Bytes(key)
-
-	fileBytes, err := gcm.OpenGCM(nonce, key, data)
-	if err != nil {
-		return nil, ErrDecryption
 	}
 
 	return fileBytes, nil
 }
 
-func (a *vault) Encrypt(fileBytes []byte) (*gcm.SaltedGCM, error) {
+func (v *vault) Encrypt(fileBytes []byte) (*gcm.SaltedGCM, error) {
 	salt, err := format.RandomBytes(meta.MSK_SALT_SIZE)
 	if err != nil {
 		return nil, err
 	}
 
-	if a.mk == nil {
-		return nil, errors.New("failed to load master key")
-	}
+	var sealedGCM *gcm.SealedCGM
 
-	lockedBuffer, err := a.mk.Open()
+	err = v.withMk(func(mk []byte) error {
+		key, err := DeriveArgonKey(mk, salt)
+		if err != nil {
+			return err
+		}
+		defer wipe.Bytes(key)
+
+		sealedGCM, err = gcm.SealGCM(key, fileBytes)
+		if err != nil {
+			return err
+		}
+		defer wipe.Bytes(fileBytes)
+
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
-	defer lockedBuffer.Destroy()
-
-	key, err := DeriveArgonKey(lockedBuffer.Bytes(), salt)
-	if err != nil {
-		return nil, err
-	}
-	defer wipe.Bytes(key)
-
-	sealedGCM, err := gcm.SealGCM(key, fileBytes)
-	if err != nil {
-		return nil, err
-	}
-	defer wipe.Bytes(fileBytes)
 
 	return &gcm.SaltedGCM{Nonce: sealedGCM.Nonce, Salt: salt, CipherData: sealedGCM.CipherData}, nil
 }
 
-func (a *vault) CreateSession(token []byte) (*gcm.SealedCGM, error) {
-	if a.mk == nil {
-		return nil, errors.New("failed to load master key")
-	}
+func (v *vault) CreateSession(token []byte) (*gcm.SealedCGM, error) {
+	var sealedGCM *gcm.SealedCGM
 
-	lockedBuffer, err := a.mk.Open()
-	if err != nil {
-		return nil, err
-	}
-	defer lockedBuffer.Destroy()
+	err := v.withMk(func(mk []byte) error {
+		key, err := DeriveSessionToken(token)
+		if err != nil {
+			return err
+		}
+		defer wipe.Bytes(key)
 
-	key, err := DeriveSessionToken(token)
-	if err != nil {
-		return nil, err
-	}
-	defer wipe.Bytes(key)
+		sealedGCM, err = gcm.SealGCM(key, mk)
+		if err != nil {
+			return err
+		}
 
-	sealedGCM, err := gcm.SealGCM(key, lockedBuffer.Bytes())
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +136,7 @@ func (a *vault) CreateSession(token []byte) (*gcm.SealedCGM, error) {
 	return sealedGCM, nil
 }
 
-func (a *vault) LoadSession(bs *session.BinarySession) error {
+func (v *vault) LoadSession(bs *session.BinarySession) error {
 	key, err := DeriveSessionToken(bs.Token)
 	if err != nil {
 		return err
@@ -135,7 +148,7 @@ func (a *vault) LoadSession(bs *session.BinarySession) error {
 		return ErrDecryption
 	}
 
-	a.ConfigMK(mk)
+	v.ConfigMK(mk)
 
 	return nil
 }

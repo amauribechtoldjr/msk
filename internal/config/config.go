@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
+	"github.com/amauribechtoldjr/msk/internal/files"
 	"github.com/amauribechtoldjr/msk/internal/format"
 	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
@@ -23,25 +24,12 @@ type Config struct {
 }
 
 func NewConfig() (*Config, error) {
-	configDir, err := os.UserConfigDir()
+	path, err := files.MSKConfigPath("config.msk")
 	if err != nil {
 		return &Config{}, err
 	}
 
-	return &Config{Path: filepath.Join(configDir, "msk", "config.msk")}, nil
-}
-
-func (c *Config) Exists() (bool, error) {
-	_, err := os.Stat(c.Path)
-	if err == nil {
-		return true, nil
-	}
-
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-
-	return false, err
+	return &Config{Path: path}, nil
 }
 
 func (c *Config) Load(vault vault.Vault) (string, error) {

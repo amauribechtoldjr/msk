@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/amauribechtoldjr/msk/internal/files"
 	"github.com/amauribechtoldjr/msk/internal/format"
 	"github.com/amauribechtoldjr/msk/internal/gcm"
 	"github.com/amauribechtoldjr/msk/internal/meta"
@@ -38,14 +39,12 @@ type BinarySession struct {
 }
 
 func New() (Session, error) {
-	configDir, err := os.UserConfigDir()
+	path, err := files.MSKConfigPath("session.msk")
 	if err != nil {
 		return nil, err
 	}
 
-	return &session{
-		path: filepath.Join(configDir, "msk", "session.msk"),
-	}, nil
+	return &session{path: path}, nil
 }
 
 func (s *session) LoadFile(token string) (*BinarySession, error) {

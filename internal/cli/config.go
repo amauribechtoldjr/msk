@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/amauribechtoldjr/msk/internal/config"
+	"github.com/amauribechtoldjr/msk/internal/files"
 	"github.com/amauribechtoldjr/msk/internal/logger"
 	"github.com/amauribechtoldjr/msk/internal/prompt"
 	"github.com/amauribechtoldjr/msk/internal/vault"
@@ -40,7 +41,7 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 				return nil
 			}
 
-			exists, err := conf.Exists()
+			exists, err := files.FileExists(conf.Path)
 			if err != nil {
 				return fmt.Errorf("failed to check config: %w", err)
 			}

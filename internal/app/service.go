@@ -36,7 +36,12 @@ func NewMSKService(r storage.Repository, v vault.Vault) Service {
 }
 
 func (s *MSKService) DeleteSecret(name string) error {
-	if !s.repo.FileExists(name) {
+	exists, err := s.repo.FileExists(name)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
 		return ErrSecretNotFound
 	}
 
@@ -44,7 +49,12 @@ func (s *MSKService) DeleteSecret(name string) error {
 }
 
 func (s *MSKService) AddSecret(name string, rawP []byte) error {
-	if s.repo.FileExists(name) {
+	exists, err := s.repo.FileExists(name)
+	if err != nil {
+		return err
+	}
+
+	if exists {
 		return ErrSecretExists
 	}
 
@@ -70,7 +80,12 @@ func (s *MSKService) AddSecret(name string, rawP []byte) error {
 }
 
 func (s *MSKService) UpdateSecret(name string, rawP []byte) error {
-	if !s.repo.FileExists(name) {
+	exists, err := s.repo.FileExists(name)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
 		return ErrSecretNotFound
 	}
 
@@ -96,7 +111,12 @@ func (s *MSKService) UpdateSecret(name string, rawP []byte) error {
 }
 
 func (s *MSKService) GetSecret(name string) ([]byte, error) {
-	if !s.repo.FileExists(name) {
+	exists, err := s.repo.FileExists(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if !exists {
 		return nil, ErrSecretNotFound
 	}
 

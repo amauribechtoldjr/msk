@@ -5,13 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/amauribechtoldjr/msk/internal/files"
 )
 
 var ErrNotFound = errors.New("secret not found")
 var ErrInvalidSecret = errors.New("secret invalid")
 
 type Repository interface {
-	FileExists(name string) bool
+	FileExists(name string) (bool, error)
 	GetFile(name string) ([]byte, error)
 	SaveFile(encryptedFile []byte, name string) error
 	DeleteFile(name string) error
@@ -82,34 +84,25 @@ func (s *Store) GetFile(name string) ([]byte, error) {
 	return data, nil
 }
 
+func (s *Store) FileExists(name string) (bool, error) {
+	return files.FileExists(s.getFilePath(name))
+}
+
 func (s *Store) DeleteFile(name string) error {
-	getFilePath := s.getFilePath(name)
+	filePath := s.getFilePath(name)
 
-	info, err := os.Stat(getFilePath)
-	if err != nil {
-		return ErrNotFound
-	}
-
-	if info.IsDir() {
-		return ErrInvalidSecret
-	}
-
-	err = os.Remove(getFilePath)
+	exists, err := files.FileExists(filePath)
 	if err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func (s *Store) FileExists(name string) bool {
-	_, err := os.Stat(s.getFilePath(name))
-	if err == nil {
-		return true
+	if !exists {
+		return ErrNotFound
 	}
 
-	return false
+	return os.Remove(filePath)
 }
+
 
 func (s *Store) GetFiles() ([]string, error) {
 	files, err := os.ReadDir(s.Path)

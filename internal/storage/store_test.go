@@ -67,7 +67,10 @@ func TestFileExists(t *testing.T) {
 			t.Fatalf("failed to write test file: %v", err)
 		}
 
-		exists := store.FileExists(fileName)
+		exists, err := store.FileExists(fileName)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 
 		if !exists {
 			t.Fatal("should return true when file exists")
@@ -78,10 +81,13 @@ func TestFileExists(t *testing.T) {
 		store := initializeStore(t)
 
 		fileName := "existing-file"
-		exists := store.FileExists(fileName)
+		exists, err := store.FileExists(fileName)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 
 		if exists {
-			t.Fatal("should return true when file exists")
+			t.Fatal("should return false when file does not exist")
 		}
 	})
 }
