@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"os"
 	"slices"
 
 	"github.com/amauribechtoldjr/msk/internal/app"
@@ -15,7 +14,7 @@ type ServiceHolder struct {
 	Service app.Service
 }
 
-var ignored_commands = []string{"version", "v", "help", "unlock", "lock", "config"}
+var ignored_commands = []string{"msk", "version", "v", "help", "unlock", "lock", "config"}
 
 func NewMSKCmd() *cobra.Command {
 	holder := &ServiceHolder{}
@@ -24,27 +23,12 @@ func NewMSKCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "msk",
 		Short: "MSK is a lightweight, offline password manager that securely encrypts your credentials using a master password.",
-		Long: `
-			MSK is a lightweight password manager designed to keep
-			all your credentials securely stored on your own computer,
-			without ever exposing them to the internet.
-			All passwords are encrypted using a master password,
-			ensuring that even if someone gains access to your machine,
-			they won't be able to view any stored data without the correct master key.`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if slices.Contains(ignored_commands, cmd.Name()) {
 				return nil
 			}
 
-			helpFlag, err := cmd.Flags().GetBool("help")
-			if err != nil {
-				return err
-			}
-
-			if helpFlag {
-				return nil
-			}
-
+			var err error
 			holder.Service, err = app.BootstrapWithAuth(v)
 			if err != nil {
 				return err
@@ -58,6 +42,15 @@ func NewMSKCmd() *cobra.Command {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			helpFlag, err := cmd.Flags().GetBool("help")
+			if err != nil {
+				return err
+			}
+
+			if helpFlag {
+				return nil
+			}
+
 			isVersionCommand, err := cmd.Flags().GetBool("version")
 			if err != nil {
 				return err
@@ -65,10 +58,10 @@ func NewMSKCmd() *cobra.Command {
 
 			if isVersionCommand {
 				logger.PrintInfo(meta.Version)
-				os.Exit(0)
+				return nil
 			}
 
-			return nil
+			return cmd.Help()
 		},
 	}
 

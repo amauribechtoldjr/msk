@@ -4,9 +4,6 @@ LDFLAGS := -ldflags "-X github.com/amauribechtoldjr/msk/internal/build.Version=$
 build:
 	go build $(LDFLAGS) -o ./bin/ ./cmd/msk/main.go
 
-run-build:
-	go run ./bin/main.exe
-
 run:
 	go run ./cmd/msk/main.go
 
