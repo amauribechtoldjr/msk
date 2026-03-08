@@ -98,7 +98,7 @@ func (s *session) StoreSession(sealedGCM *gcm.SealedCGM) error {
 		return err
 	}
 
-	return files.WriteFile(s.path, file, 0o600)
+	return files.WriteAtomicFile(s.path, file, 0o600)
 }
 
 func (s *session) Refresh() error {
@@ -115,7 +115,7 @@ func (s *session) Refresh() error {
 	newExpiry := time.Now().Add(meta.SESSION_TTL).Unix()
 	binary.BigEndian.PutUint64(data[meta.SESSION_NONCE_SIZE:meta.SESSION_HEADER_SIZE], uint64(newExpiry))
 
-	return files.WriteFile(s.path, data, 0o600)
+	return files.WriteAtomicFile(s.path, data, 0o600)
 }
 
 func (s *session) Destroy() error {

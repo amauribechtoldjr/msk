@@ -83,7 +83,7 @@ func (c *Config) Save(vault vault.Vault, vaultPath string) error {
 		return err
 	}
 
-	return files.WriteFile(c.Path, finalBytes, 0o600)
+	return files.WriteAtomicFile(c.Path, finalBytes, 0o600)
 }
 
 func (c *Config) DefaultVaultPath() (string, error) {

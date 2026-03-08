@@ -29,7 +29,7 @@ func ReadFile(path string, notFoundErr error) ([]byte, error) {
 	return data, nil
 }
 
-func WriteFile(path string, data []byte, perm os.FileMode) error {
+func WriteAtomicFile(path string, data []byte, perm os.FileMode) error {
 	tmpPath := path + ".tmp"
 
 	tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)

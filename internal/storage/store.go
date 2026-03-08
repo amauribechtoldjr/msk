@@ -32,7 +32,7 @@ func NewStore(path string) (*Store, error) {
 }
 
 func (s *Store) SaveFile(encryptedFile []byte, name string) error {
-	return files.WriteFile(s.getFilePath(name), encryptedFile, 0o600)
+	return files.WriteAtomicFile(s.getFilePath(name), encryptedFile, 0o600)
 }
 
 func (s *Store) GetFile(name string) ([]byte, error) {
@@ -57,7 +57,6 @@ func (s *Store) DeleteFile(name string) error {
 
 	return os.Remove(filePath)
 }
-
 
 func (s *Store) GetFiles() ([]string, error) {
 	files, err := os.ReadDir(s.Path)
