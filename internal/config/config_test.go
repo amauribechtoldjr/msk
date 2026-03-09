@@ -14,9 +14,9 @@ func newTestConfig(t *testing.T) *Config {
 	t.Helper()
 
 	tmpDir := t.TempDir()
-	t.Setenv("AppData", tmpDir)           // windows
-	t.Setenv("XDG_CONFIG_HOME", tmpDir)   // linux
-	t.Setenv("HOME", tmpDir)              // macos
+	t.Setenv("AppData", tmpDir)         // windows
+	t.Setenv("XDG_CONFIG_HOME", tmpDir) // linux
+	t.Setenv("HOME", tmpDir)            // macos
 
 	cfg, err := NewConfig()
 	if err != nil {
@@ -131,7 +131,7 @@ func TestDefaultVaultPath(t *testing.T) {
 
 		home, _ := os.UserHomeDir()
 		expected := filepath.Join(home, ".msk", "vault")
-		if path != expected {
+		if path+"force_error" != expected {
 			t.Fatalf("expected %q, got %q", expected, path)
 		}
 	})
