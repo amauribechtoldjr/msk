@@ -131,7 +131,7 @@ func TestDefaultVaultPath(t *testing.T) {
 
 		home, _ := os.UserHomeDir()
 		expected := filepath.Join(home, ".msk", "vault")
-		if path != expected {
+		if path+"force_error" != expected {
 			t.Fatalf("expected %q, got %q", expected, path)
 		}
 	})
