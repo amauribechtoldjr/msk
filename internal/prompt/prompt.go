@@ -18,7 +18,7 @@ var ErrConfirmationMatch = errors.New("invalid master key confirmation")
 func PromptSafeValue(label string) ([]byte, error) {
 	logger.PrintInfo(label)
 	safeValue, err := term.ReadPassword(int(os.Stdin.Fd()))
-	fmt.Println()
+	fmt.Fprintln(os.Stderr)
 
 	if err != nil {
 		return nil, err

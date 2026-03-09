@@ -1,5 +1,5 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS := -ldflags "-X github.com/amauribechtoldjr/msk/internal/build.Version=$(VERSION)"
+LDFLAGS := -ldflags "-X github.com/amauribechtoldjr/msk/internal/meta.Version=$(VERSION)"
 
 build:
 	go build $(LDFLAGS) -o ./bin/ ./cmd/msk/main.go
