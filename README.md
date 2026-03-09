@@ -119,19 +119,7 @@ Unlock the vault for session-based access (avoids re-entering master password fo
 export MSK_SESSION=$(msk unlock)
 ```
 
-## Command Reference
-
-| Command | Alias | Description | Flags |
-|---------|-------|-------------|-------|
-| `msk config` | — | Set vault path and master password | `--show, -s` display current config |
-| `msk add <name>` | `a` | Add a new secret | `--generate, -g` generate password; `--length, -l` length (default: 16); `--no-symbols` |
-| `msk get <name>` | `g` | Copy secret to clipboard | — |
-| `msk update <name>` | `u` | Update an existing secret | — |
-| `msk del <name>` | `d` | Delete a secret | — |
-| `msk list` | `l` | List all stored secrets | — |
-| `msk unlock` | — | Unlock vault for current session | — |
-| `msk lock` | — | Lock vault and end session | — |
-| `msk version` | `v` | Print version | — |
+For a full list of commands and flags, run `msk --help` or `msk <command> --help`.
 
 ## How It Works
 
