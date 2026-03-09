@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          LDFLAGS="-X github.com/amauribechtoldjr/msk/internal/meta.Version=${VERSION}"
+          BINARY_NAME=msk
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            BINARY_NAME=msk.exe
+          fi
+          go build -ldflags "${LDFLAGS}" -o "${BINARY_NAME}" ./cmd/msk/
+
+      - name: Package binary
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip "msk-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.zip" msk.exe
+          else
+            tar czf "msk-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" msk
+          fi
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            msk-*.tar.gz
+            msk-*.zip

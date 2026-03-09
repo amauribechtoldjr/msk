@@ -3,6 +3,7 @@ package clip
 import (
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/amauribechtoldjr/msk/internal/logger"
@@ -37,6 +38,6 @@ func Clear() {
 	}
 	CopyText([]byte{})
 
-	fmt.Println()
+	fmt.Fprintln(os.Stderr)
 	logger.PrintSuccess("Clipboard cleared.\n")
 }

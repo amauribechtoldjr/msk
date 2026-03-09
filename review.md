@@ -10,4 +10,8 @@
 
 ### 4. Refactor config.go to stop using secret.domain struct
 
-### 5. Check silently usage for ALL commands
+### 5. Review silently usage for ALL commands
+
+### 6. Check config file before prompting master password
+
+### 7. Improve list command to better results layout

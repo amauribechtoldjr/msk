@@ -1,62 +1,173 @@
-# MSK – Lightweight Local Password Manager
+# MSK
 
-**MSK** is a lightweight password manager designed to keep all your credentials **securely stored on your own computer**, without ever exposing them to the internet.
+**A lightweight, offline password manager that keeps your credentials encrypted and local.**
 
-All passwords are **encrypted using a master password**, ensuring that even if someone gains access to your machine, they won’t be able to view any stored data without the correct master key.
+![Go Version](https://img.shields.io/github/go-mod/go-version/amauribechtoldjr/msk)
+![License](https://img.shields.io/github/license/amauribechtoldjr/msk)
+![CI](https://img.shields.io/github/actions/workflow/status/amauribechtoldjr/msk/ci.yml?label=CI)
 
-To maximize your security:
+MSK stores all your passwords locally on your machine, encrypted with a master password. No cloud, no sync, no network requests — your credentials never leave your computer.
 
-- Memorize your master password, **or**
-- Store it in a safe place **outside your computer**
+## Features
 
-As long as your master password remains secret, your data stays protected.
+- **AES-256-GCM encryption** — Every secret is individually encrypted at rest
+- **Argon2id key derivation** — Memory-hard protection against brute-force attacks
+- **Secure memory handling** — Sensitive data protected in memory via memguard
+- **Session management** — Unlock your vault once, work for 15 minutes without re-entering your master password
+- **Password generation** — Built-in cryptographically secure random password generator
+- **Clipboard integration** — Passwords copied to clipboard and auto-cleared after 15 seconds
+- **Atomic file operations** — Writes go to temp files first, preventing corruption on crash
+- **Cross-platform** — Works on Linux, macOS, and Windows
+
+## Security
+
+MSK was designed with security as the top priority. Here is how your data is protected:
+
+### Encryption
+
+Each secret is encrypted individually using **AES-256-GCM** (Galois/Counter Mode), providing both confidentiality and integrity. The encryption key is derived from your master password using **Argon2id** with the following parameters:
+
+| Parameter | Value |
+|-----------|-------|
+| Time cost | 6 iterations |
+| Memory cost | 128 MB |
+| Parallelism | 4 threads |
+| Key length | 32 bytes (256 bits) |
+| Salt length | 16 bytes |
+
+### File Format
+
+Each `.msk` file contains:
+
+```
+[MSK magic bytes (3B)] [Version (1B)] [Salt (16B)] [Nonce (12B)] [Encrypted data]
+```
+
+All vault files are stored with `0600` permissions (owner read/write only).
+
+### Memory Protection
+
+Sensitive data (master password, decrypted secrets) is held in memory using [memguard](https://github.com/awnumar/memguard), which:
+
+- Prevents memory from being paged to disk
+- Encrypts sensitive buffers in RAM
+- Automatically purges data on process exit
+
+### Session Security
+
+Sessions expire after **15 minutes**. The session token (32 random bytes) is used to derive an AES key via SHA-256, which encrypts the master key on disk for the session duration.
 
 ## Installation
 
-- Download
-- Build
-- Add to your environment variables
+### Download a pre-built binary
 
-## Getting Started
+Download the latest release for your platform from the [Releases page](https://github.com/amauribechtoldjr/msk/releases).
 
-Before using MSK, you need to initialize it by running the config command. This sets your master password and vault path (where encrypted files are stored):
+| Platform | File |
+|----------|------|
+| Linux (x64) | `msk-<version>-linux-amd64.tar.gz` |
+| Linux (ARM64) | `msk-<version>-linux-arm64.tar.gz` |
+| macOS (Intel) | `msk-<version>-darwin-amd64.tar.gz` |
+| macOS (Apple Silicon) | `msk-<version>-darwin-arm64.tar.gz` |
+| Windows (x64) | `msk-<version>-windows-amd64.zip` |
 
+Extract the binary and add it to your `PATH`.
+
+### Build from source
+
+Requires [Go 1.25+](https://go.dev/dl/).
+
+```bash
+git clone https://github.com/amauribechtoldjr/msk.git
+cd msk
+make install
 ```
+
+This installs `msk` to your `$GOPATH/bin` directory.
+
+## Quick Start
+
+Initialize MSK by setting your master password and vault path:
+
+```bash
 msk config
 ```
 
-You'll be prompted to choose a vault path (press Enter to use the default `~/.msk/vault`) and set your master password. The config is encrypted and stored in your system's config directory.
+You will be prompted to choose a vault path (default: `~/.msk/vault`) and set your master password. The configuration is encrypted and stored in your system's config directory.
 
-You can re-run `msk config` at any time to change your vault path or master password.
+Add your first password:
 
-## Usage
-
-To save a new password:
-
-```
+```bash
 msk add github
 ```
 
-To update a password:
+Retrieve it (copies to clipboard, auto-clears after 15 seconds):
 
-```
-msk update github
-```
-
-To get the password (copies to clipboard):
-
-```
+```bash
 msk get github
 ```
 
-To delete a password:
+Generate a random password instead of typing one:
+
+```bash
+msk add gitlab --generate --length 24
+```
+
+Unlock the vault for session-based access (avoids re-entering master password for 15 minutes):
+
+```bash
+export MSK_SESSION=$(msk unlock)
+```
+
+## Command Reference
+
+| Command | Alias | Description | Flags |
+|---------|-------|-------------|-------|
+| `msk config` | — | Set vault path and master password | `--show, -s` display current config |
+| `msk add <name>` | `a` | Add a new secret | `--generate, -g` generate password; `--length, -l` length (default: 16); `--no-symbols` |
+| `msk get <name>` | `g` | Copy secret to clipboard | — |
+| `msk update <name>` | `u` | Update an existing secret | — |
+| `msk del <name>` | `d` | Delete a secret | — |
+| `msk list` | `l` | List all stored secrets | — |
+| `msk unlock` | — | Unlock vault for current session | — |
+| `msk lock` | — | Lock vault and end session | — |
+| `msk version` | `v` | Print version | — |
+
+## How It Works
 
 ```
-msk del github
+┌─────────────┐    ┌───────────────┐    ┌──────────────┐
+│ Master       │───>│ Argon2id      │───>│ 256-bit      │
+│ Password     │    │ Key Derivation│    │ Secret Key   │
+└─────────────┘    └───────────────┘    └──────┬───────┘
+                                               │
+┌─────────────┐    ┌───────────────┐           │
+│ Plaintext   │───>│ AES-256-GCM   │<──────────┘
+│ Secret      │    │ Encrypt       │
+└─────────────┘    └───────┬───────┘
+                           │
+                    ┌──────▼───────┐
+                    │ .msk File    │
+                    │ (vault dir)  │
+                    └──────────────┘
 ```
 
-To list all stored passwords:
+Each secret is stored as an individual `.msk` file in your vault directory. File writes are atomic (write to temp file, then rename) to prevent corruption.
 
-```
-msk list
-```
+**Sessions:** Running `msk unlock` generates a random session token, encrypts your master key with it, and stores the encrypted key on disk. The token is exported as `MSK_SESSION`. Subsequent commands use the session token to decrypt the master key without prompting. Sessions expire after 15 minutes.
+
+## Project Status
+
+MSK is under **active development**. Core functionality (encryption, storage, session management) is stable, but the API and features may evolve. Contributions and feedback are welcome.
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/my-feature`)
+3. Run tests (`make test`)
+4. Commit your changes
+5. Open a pull request against `main`
+
+## License
+
+[MIT](LICENSE)

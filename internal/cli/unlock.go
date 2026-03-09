@@ -55,7 +55,7 @@ func NewUnlockCmd(vault vault.Vault) *cobra.Command {
 				return fmt.Errorf("failed to store session: %w", err)
 			}
 
-			fmt.Printf("export MSK_SESSION=%s\n", encodedToken)
+			fmt.Print(encodedToken)
 			return nil
 		},
 	}
