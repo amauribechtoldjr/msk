@@ -10,4 +10,4 @@
 
 ### 4. Refactor config.go to stop using secret.domain struct
 
-### 5. Check silently usage
+### 5. Check silently usage for ALL commands
