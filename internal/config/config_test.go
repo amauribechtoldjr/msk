@@ -12,7 +12,12 @@ import (
 
 func newTestConfig(t *testing.T) *Config {
 	t.Helper()
-	t.Setenv("AppData", t.TempDir())
+
+	tmpDir := t.TempDir()
+	t.Setenv("AppData", tmpDir)           // windows
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)   // linux
+	t.Setenv("HOME", tmpDir)              // macos
+
 	cfg, err := NewConfig()
 	if err != nil {
 		t.Fatalf("NewConfig failed: %v", err)
