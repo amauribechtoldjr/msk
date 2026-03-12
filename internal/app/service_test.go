@@ -17,8 +17,7 @@ func newTestService(t *testing.T, masterKey string) Service {
 		t.Fatalf("failed to create store: %v", err)
 	}
 
-	crypto := encryption.NewMSKVault()
-	crypto.ConfigMK([]byte(masterKey))
+	crypto := encryption.NewVaultWithMK([]byte(masterKey))
 
 	return NewMSKService(store, crypto)
 }
@@ -63,7 +62,7 @@ func TestAddSecret(t *testing.T) {
 			t.Fatalf("failed to create store: %v", err)
 		}
 
-		crypto := encryption.NewMSKVault()
+		crypto := encryption.NewVault()
 		service := NewMSKService(store, crypto)
 
 		err = service.AddSecret("secret", []byte("pass"))

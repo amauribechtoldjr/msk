@@ -29,8 +29,7 @@ func TestSaveAndLoad(t *testing.T) {
 	t.Run("should save and load vault path with correct key", func(t *testing.T) {
 		cfg := newTestConfig(t)
 
-		vault := vault.NewMSKVault()
-		vault.ConfigMK([]byte("test-master-key"))
+		vault := vault.NewVaultWithMK([]byte("test-master-key"))
 
 		vaultPath := "/home/user/.msk/vault"
 		err := cfg.Save(vault, vaultPath)
@@ -53,17 +52,16 @@ func TestLoadWrongKey(t *testing.T) {
 	t.Run("should return ErrInvalidConfig with wrong key", func(t *testing.T) {
 		cfg := newTestConfig(t)
 
-		vault := vault.NewMSKVault()
-		vault.ConfigMK([]byte("correct-key"))
+		v := vault.NewVaultWithMK([]byte("correct-key"))
 
-		err := cfg.Save(vault, "/some/path")
+		err := cfg.Save(v, "/some/path")
 		if err != nil {
 			t.Fatalf("Save failed: %v", err)
 		}
 
-		vault.ConfigMK([]byte("wrong-key"))
+		v = vault.NewVaultWithMK([]byte("wrong-key"))
 
-		_, err = cfg.Load(vault)
+		_, err = cfg.Load(v)
 		if !errors.Is(err, ErrInvalidConfig) {
 			t.Fatalf("expected ErrInvalidConfig, got %v", err)
 		}
@@ -74,8 +72,7 @@ func TestLoadNotFound(t *testing.T) {
 	t.Run("should return ErrConfigNotFound when file does not exist", func(t *testing.T) {
 		cfg := newTestConfig(t)
 
-		vault := vault.NewMSKVault()
-		vault.ConfigMK([]byte("some-key"))
+		vault := vault.NewVaultWithMK([]byte("some-key"))
 
 		_, err := cfg.Load(vault)
 		if !errors.Is(err, ErrConfigNotFound) {
@@ -101,8 +98,7 @@ func TestExists(t *testing.T) {
 	t.Run("should return true when config exists", func(t *testing.T) {
 		cfg := newTestConfig(t)
 
-		vault := vault.NewMSKVault()
-		vault.ConfigMK([]byte("test-key"))
+		vault := vault.NewVaultWithMK([]byte("test-key"))
 
 		err := cfg.Save(vault, "/some/path")
 		if err != nil {

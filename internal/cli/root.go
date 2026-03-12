@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/amauribechtoldjr/msk/internal/app"
@@ -18,7 +19,7 @@ var ignored_commands = []string{"msk", "version", "v", "help", "unlock", "lock",
 
 func NewMSKCmd() *cobra.Command {
 	holder := &ServiceHolder{}
-	v := vault.NewMSKVault()
+	v := vault.NewVault()
 
 	cmd := &cobra.Command{
 		Use:   "msk",
@@ -31,6 +32,7 @@ func NewMSKCmd() *cobra.Command {
 			var err error
 			holder.Service, err = app.BootstrapWithAuth(v)
 			if err != nil {
+				fmt.Println("entrei")
 				return err
 			}
 
