@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -13,6 +14,20 @@ import (
 )
 
 func BootstrapWithAuth(vault vault.Vault) (Service, error) {
+	cfg, err := config.NewConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	exists, err := cfg.Exists()
+	if err != nil {
+		return nil, err
+	}
+
+	if !exists {
+		return nil, errors.New("invalid config file")
+	}
+
 	if token := os.Getenv("MSK_SESSION"); token != "" {
 		session, err := session.New()
 		if err != nil {
@@ -24,21 +39,18 @@ func BootstrapWithAuth(vault vault.Vault) (Service, error) {
 			return nil, err
 		}
 
-		if err = vault.LoadSession(binarySession); err != nil {
+		err = vault.LoadSession(binarySession)
+		if err != nil {
 			return nil, fmt.Errorf("failed to load session: %v", err)
 		}
+
 	} else {
-		mk, err := prompt.PromptMasterPassword(false)
+		mk, err := prompt.ReadMasterPassword(false)
 		if err != nil {
 			return nil, err
 		}
 		defer wipe.Bytes(mk)
 		vault.ConfigMK(mk)
-	}
-
-	cfg, err := config.NewConfig()
-	if err != nil {
-		return nil, err
 	}
 
 	vaultPath, err := cfg.Load(vault)

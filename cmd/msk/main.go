@@ -21,7 +21,6 @@ func main() {
 
 	rootCmd := cli.NewMSKCmd()
 	if err := rootCmd.Execute(); err != nil {
-		logger.PrintError("%s\n", err)
 		memguard.Purge()
 		os.Exit(1)
 	}

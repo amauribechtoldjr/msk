@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/fatih/color"
@@ -20,4 +21,8 @@ func PrintSuccessf(format string, a ...any) {
 
 func PrintError(format string, a ...any) {
 	color.New(color.FgRed).Fprintf(os.Stderr, format, a...)
+}
+
+func Lb() {
+	fmt.Println()
 }

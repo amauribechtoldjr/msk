@@ -1,26 +1,20 @@
 package cli
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/amauribechtoldjr/msk/internal/config"
-	"github.com/amauribechtoldjr/msk/internal/files"
 	"github.com/amauribechtoldjr/msk/internal/logger"
 	"github.com/amauribechtoldjr/msk/internal/prompt"
 	"github.com/amauribechtoldjr/msk/internal/vault"
+	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/spf13/cobra"
 )
 
 func NewConfigCmd(vault vault.Vault) *cobra.Command {
 	configCmd := &cobra.Command{
-		Use:           "config",
-		Short:         "Configure MSK vault path and master password.",
-		Long:          ``,
-		SilenceErrors: true,
-		SilenceUsage:  true,
+		Use:   "config",
+		Short: "Configure MSK vault path and master password.",
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
 			vault.DestroyMK()
 			return nil
@@ -41,50 +35,16 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 				return nil
 			}
 
-			exists, err := files.FileExists(conf.Path)
-			if err != nil {
-				return fmt.Errorf("failed to check config: %w", err)
-			}
-
-			if exists {
-				logger.PrintInfo("Config already exists. Overwrite? (y/N): ")
-				reader := bufio.NewReader(os.Stdin)
-				answer, err := reader.ReadString('\n')
-				if err != nil {
-					return fmt.Errorf("failed to read input: %w", err)
-				}
-				answer = strings.TrimSpace(strings.ToLower(answer))
-				if answer != "y" && answer != "yes" {
-					logger.PrintSuccess("Config unchanged.\n")
-					return nil
-				}
-			}
-
-			defaultPath, err := conf.DefaultVaultPath()
-			if err != nil {
-				return fmt.Errorf("failed to get default vault path: %w", err)
-			}
-
-			fmt.Printf("Enter vault path (press Enter for default: %s): ", defaultPath)
-			reader := bufio.NewReader(os.Stdin)
-			vaultPath, err := reader.ReadString('\n')
-			if err != nil {
-				return fmt.Errorf("failed to read vault path: %w", err)
-			}
-			vaultPath = strings.TrimSpace(vaultPath)
-
-			if vaultPath == "" {
-				vaultPath = defaultPath
-			}
-
-			if err := os.MkdirAll(vaultPath, 0o700); err != nil {
-				return fmt.Errorf("failed to create vault directory: %w", err)
-			}
-
-			mk, err := prompt.PromptMasterPassword(false)
+			vaultPath, err := conf.CreateVault()
 			if err != nil {
 				return err
 			}
+
+			mk, err := prompt.ReadMasterPassword(false)
+			if err != nil {
+				return err
+			}
+			defer wipe.Bytes(mk)
 
 			vault.ConfigMK(mk)
 

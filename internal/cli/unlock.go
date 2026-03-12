@@ -19,7 +19,7 @@ func NewUnlockCmd(vault vault.Vault) *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			mk, err := prompt.PromptMasterPassword(false)
+			mk, err := prompt.ReadMasterPassword(false)
 			if err != nil {
 				return err
 			}
