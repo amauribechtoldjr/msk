@@ -34,7 +34,6 @@ func BootstrapWithAuth(vault vault.Vault) (Service, error) {
 
 		binarySession, err := session.LoadFile(token)
 		if err != nil {
-			fmt.Println(" 2")
 			return nil, err
 		}
 

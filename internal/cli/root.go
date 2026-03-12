@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/amauribechtoldjr/msk/internal/app"
@@ -32,7 +31,6 @@ func NewMSKCmd() *cobra.Command {
 			var err error
 			holder.Service, err = app.BootstrapWithAuth(v)
 			if err != nil {
-				fmt.Println("entrei")
 				return err
 			}
 

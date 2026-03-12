@@ -9,10 +9,8 @@ import (
 
 func NewLockCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:           "lock",
-		Short:         "Lock the vault and end the current session",
-		SilenceErrors: true,
-		SilenceUsage:  true,
+		Use:   "lock",
+		Short: "Lock the vault and end the current session",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sess, err := session.New()
 			if err != nil {

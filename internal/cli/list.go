@@ -11,12 +11,10 @@ import (
 
 func NewListCmd(holder *ServiceHolder) *cobra.Command {
 	listCmd := &cobra.Command{
-		Use:           "list",
-		Aliases:       []string{"l"},
-		Short:         "Used to list passwords from the vault.",
-		Long:          ``,
-		SilenceErrors: true,
-		SilenceUsage:  true,
+		Use:     "list",
+		Aliases: []string{"l"},
+		Short:   "Used to list passwords from the vault.",
+		Long:    ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			secretNames, err := holder.Service.ListSecrets()
 			if err != nil {

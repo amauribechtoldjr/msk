@@ -13,17 +13,24 @@ import (
 
 func NewUnlockCmd(vault vault.Vault) *cobra.Command {
 	return &cobra.Command{
-		Use:           "unlock",
-		Short:         "Unlock the vault for the current shell session",
-		SilenceErrors: true,
-		SilenceUsage:  true,
+		Use:   "unlock",
+		Short: "Unlock the vault for the current shell session",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := vault.LoadMK()
+			conf, err := config.NewConfig()
 			if err != nil {
 				return err
 			}
 
-			conf, err := config.NewConfig()
+			exists, err := conf.Exists()
+			if err != nil {
+				return err
+			}
+
+			if !exists {
+				return config.ErrConfigNotFound
+			}
+
+			err = vault.LoadMK()
 			if err != nil {
 				return err
 			}

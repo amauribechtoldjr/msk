@@ -29,7 +29,17 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 			}
 
 			if showConfig {
+				exists, err := conf.Exists()
+				if err != nil {
+					return err
+				}
+
+				if !exists {
+					return config.ErrConfigNotFound
+				}
+
 				logger.PrintInfo(conf.Path)
+				logger.Lb()
 				return nil
 			}
 
