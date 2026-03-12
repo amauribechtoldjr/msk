@@ -1,10 +1,12 @@
 package prompt
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 
 	"github.com/amauribechtoldjr/msk/internal/logger"
 	"github.com/amauribechtoldjr/msk/internal/validator"
@@ -15,7 +17,34 @@ import (
 var ErrEmptyInput = errors.New("input cannot be empty")
 var ErrConfirmationMatch = errors.New("invalid master key confirmation")
 
-func PromptSafeValue(label string) ([]byte, error) {
+func ReadString(label string) (string, error) {
+	reader := bufio.NewReader(os.Stdin)
+	logger.PrintInfo(label)
+	str, err := reader.ReadString('\n')
+	if err != nil {
+		logger.Lb()
+		return "", err
+	}
+
+	return string(str), nil
+}
+
+func ReadBoolean(label string) (bool, error) {
+	reader := bufio.NewReader(os.Stdin)
+	logger.PrintInfo(label)
+
+	str, err := reader.ReadByte()
+	if err != nil {
+		logger.Lb()
+		return false, err
+	}
+
+	answer := strings.TrimSpace(strings.ToLower(string(str)))
+
+	return answer == "y", nil
+}
+
+func ReadSafeValue(label string) ([]byte, error) {
 	logger.PrintInfo(label)
 	safeValue, err := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Fprintln(os.Stderr)
@@ -31,8 +60,8 @@ func PromptSafeValue(label string) ([]byte, error) {
 	return safeValue, nil
 }
 
-func PromptMasterPassword(shouldConfirm bool) ([]byte, error) {
-	pass, err := PromptSafeValue("Enter master password:")
+func ReadMasterPassword(shouldConfirm bool) ([]byte, error) {
+	pass, err := ReadSafeValue("Enter master password:")
 	if err != nil {
 		wipe.Bytes(pass)
 		return nil, err
@@ -44,7 +73,7 @@ func PromptMasterPassword(shouldConfirm bool) ([]byte, error) {
 	}
 
 	if shouldConfirm {
-		passConfirmation, err := PromptSafeValue("Enter master password again to confirm operation:")
+		passConfirmation, err := ReadSafeValue("Enter master password again to confirm operation:")
 		if err != nil {
 			wipe.Bytes(pass)
 			return nil, err

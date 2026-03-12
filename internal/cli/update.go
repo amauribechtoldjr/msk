@@ -31,7 +31,7 @@ func NewUpdateCmd(holder *ServiceHolder) *cobra.Command {
 				return fmt.Errorf("invalid password name: %v", err)
 			}
 
-			password, err := prompt.PromptSafeValue("Enter password:")
+			password, err := prompt.ReadSafeValue("Enter password:")
 			if err != nil {
 				return err
 			}
