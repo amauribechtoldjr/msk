@@ -1,7 +1,13 @@
-## Refactoring
+## Improvements
 
-### 3. Add pipeline to release on main
+### Add pipeline to release on main
 
-### 4. Refactor config.go to stop using secret.domain struct
+### Simplify README.md file
 
-### 7. Improve list command to better results layout
+### Improve errors messages
+
+Current we only show the errors messages, would be nice to show errors with better context to help users on how to solve them.
+
+### Improve commands descriptions
+
+Currently we only have "Short" descriptions for the commands, there is space to improve them with more details.

@@ -16,7 +16,6 @@ func NewUpdateCmd(holder *ServiceHolder) *cobra.Command {
 		Use:     "update <name>",
 		Aliases: []string{"u"},
 		Short:   "Used to update passwords of the vault.",
-		Long:    ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("password name is required")

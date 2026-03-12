@@ -14,6 +14,12 @@ import (
 )
 
 func NewAddCmd(holder *ServiceHolder) *cobra.Command {
+	var (
+		generate  bool
+		length    int
+		noSymbols bool
+	)
+
 	addCmd := &cobra.Command{
 		Use:     "add <name>",
 		Aliases: []string{"a"},
@@ -29,10 +35,6 @@ func NewAddCmd(holder *ServiceHolder) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("invalid password name: %v", err)
 			}
-
-			generate, _ := cmd.Flags().GetBool("generate")
-			length, _ := cmd.Flags().GetInt("length")
-			noSymbols, _ := cmd.Flags().GetBool("no-symbols")
 
 			var password []byte
 
@@ -77,9 +79,9 @@ func NewAddCmd(holder *ServiceHolder) *cobra.Command {
 		},
 	}
 
-	addCmd.Flags().BoolP("generate", "g", false, "Generate a random password instead of prompting")
-	addCmd.Flags().IntP("length", "l", 16, "Length of the generated password")
-	addCmd.Flags().Bool("no-symbols", false, "Exclude symbols from the generated password")
+	addCmd.Flags().BoolVarP(&generate, "generate", "g", false, "Generate a random password instead of prompting")
+	addCmd.Flags().IntVarP(&length, "length", "l", 16, "Length of the generated password")
+	addCmd.Flags().BoolVar(&noSymbols, "no-symbols", false, "Exclude symbols from the generated password")
 
 	return addCmd
 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/amauribechtoldjr/msk/internal/domain"
 	"github.com/amauribechtoldjr/msk/internal/format"
@@ -20,7 +21,7 @@ type Service interface {
 	AddSecret(name string, rawP []byte) error
 	UpdateSecret(name string, rawP []byte) error
 	GetSecret(name string) ([]byte, error)
-	ListSecrets() ([]string, error)
+	GetSecrets() ([]string, error)
 }
 
 type MSKService struct {
@@ -144,10 +145,14 @@ func (s *MSKService) GetSecret(name string) ([]byte, error) {
 	return secret.Password, nil
 }
 
-func (s *MSKService) ListSecrets() ([]string, error) {
+func (s *MSKService) GetSecrets() ([]string, error) {
 	files, err := s.repo.GetFiles()
 	if err != nil {
 		return nil, err
+	}
+
+	for i := range files {
+		files[i] = strings.TrimSuffix(files[i], ".msk")
 	}
 
 	return files, nil
