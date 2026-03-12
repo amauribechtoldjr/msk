@@ -16,7 +16,6 @@ func NewGetCmd(holder *ServiceHolder) *cobra.Command {
 		Use:     "get <name>",
 		Aliases: []string{"g"},
 		Short:   "Used to get passwords from the vault.",
-		Long:    ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("password name is required")

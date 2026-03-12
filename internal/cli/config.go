@@ -10,20 +10,13 @@ import (
 )
 
 func NewConfigCmd(vault vault.Vault) *cobra.Command {
+	var showConfig bool
+
 	configCmd := &cobra.Command{
 		Use:   "config",
 		Short: "Configure MSK vault path and master password.",
-		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-			vault.DestroyMK()
-			return nil
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			conf, err := config.NewConfig()
-			if err != nil {
-				return err
-			}
-
-			showConfig, err := cmd.Flags().GetBool("show")
 			if err != nil {
 				return err
 			}
@@ -70,6 +63,7 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			defer vault.DestroyMK()
 
 			if err := conf.Save(vault, vaultPath); err != nil {
 				return fmt.Errorf("failed to save config: %w", err)
@@ -80,7 +74,7 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 		},
 	}
 
-	configCmd.Flags().BoolP("show", "s", false, "Show config and session path")
+	configCmd.Flags().BoolVarP(&showConfig, "show", "s", false, "Show config and session path")
 
 	return configCmd
 }

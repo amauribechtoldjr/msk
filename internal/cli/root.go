@@ -20,6 +20,8 @@ func NewMSKCmd() *cobra.Command {
 	holder := &ServiceHolder{}
 	v := vault.NewVault()
 
+	var isVersionCommand bool
+
 	cmd := &cobra.Command{
 		Use:   "msk",
 		Short: "MSK is a lightweight, offline password manager that securely encrypts your credentials using a master password.",
@@ -49,11 +51,6 @@ func NewMSKCmd() *cobra.Command {
 
 			if helpFlag {
 				return nil
-			}
-
-			isVersionCommand, err := cmd.Flags().GetBool("version")
-			if err != nil {
-				return err
 			}
 
 			if isVersionCommand {
@@ -92,7 +89,7 @@ func NewMSKCmd() *cobra.Command {
 	lockCmd := NewLockCmd()
 	cmd.AddCommand(lockCmd)
 
-	cmd.Flags().BoolP("version", "v", false, "Show MSK current version")
+	cmd.Flags().BoolVarP(&isVersionCommand, "version", "v", false, "Show MSK current version")
 
 	return cmd
 }

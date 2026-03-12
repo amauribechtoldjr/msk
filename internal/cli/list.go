@@ -1,39 +1,56 @@
 package cli
 
 import (
+	"cmp"
+	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
+	"slices"
 
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
 func NewListCmd(holder *ServiceHolder) *cobra.Command {
+	var (
+		jsonOutput bool
+		sortOrder  string
+	)
+
 	listCmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"l"},
 		Short:   "Used to list passwords from the vault.",
-		Long:    ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			secretNames, err := holder.Service.ListSecrets()
+			secretNames, err := holder.Service.GetSecrets()
 			if err != nil {
 				return fmt.Errorf("failed to get password: %w", err)
 			}
 
-			t := table.NewWriter()
-			t.SetOutputMirror(os.Stdout)
-			t.AppendHeader(table.Row{"ID", "Name"})
-
-			for i, name := range secretNames {
-				t.AppendRow(table.Row{i, strings.TrimSuffix(name, ".msk")})
+			if sortOrder != "" {
+				slices.SortFunc(secretNames, func(a, b string) int {
+					if sortOrder == "asc" {
+						return cmp.Compare(a, b)
+					}
+					return cmp.Compare(b, a)
+				})
 			}
 
-			t.Render()
+			if jsonOutput {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				return enc.Encode(secretNames)
+			}
+
+			for _, name := range secretNames {
+				fmt.Println(name)
+			}
 
 			return nil
 		},
 	}
+
+	listCmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
+	listCmd.Flags().StringVarP(&sortOrder, "sort", "s", "", "Sort secrets by name (asc or desc)")
 
 	return listCmd
 }

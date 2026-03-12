@@ -221,7 +221,7 @@ func TestListSecrets(t *testing.T) {
 			t.Fatalf("add failed: %v", err)
 		}
 
-		files, err := service.ListSecrets()
+		files, err := service.GetSecrets()
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -234,7 +234,7 @@ func TestListSecrets(t *testing.T) {
 	t.Run("should return empty slice when no secrets exist", func(t *testing.T) {
 		service := newTestService(t, "master-key")
 
-		files, err := service.ListSecrets()
+		files, err := service.GetSecrets()
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
