@@ -6,6 +6,7 @@ import (
 	"github.com/amauribechtoldjr/msk/internal/format"
 	"github.com/amauribechtoldjr/msk/internal/gcm"
 	"github.com/amauribechtoldjr/msk/internal/meta"
+	"github.com/amauribechtoldjr/msk/internal/prompt"
 	"github.com/amauribechtoldjr/msk/internal/session"
 
 	"github.com/amauribechtoldjr/msk/internal/wipe"
@@ -17,21 +18,27 @@ var ErrDecryption = errors.New("decryption failed")
 type Vault interface {
 	Encrypt([]byte) (*gcm.SaltedGCM, error)
 	Decrypt(salt, nonce, data []byte) ([]byte, error)
-	ConfigMK([]byte)
 	DestroyMK()
 	CreateSession(token []byte) (*gcm.SealedCGM, error)
 	LoadSession(bs *session.BinarySession) error
+	LoadMK() error
 }
 
 type vault struct {
 	mk *memguard.Enclave
 }
 
-func NewMSKVault() Vault {
+func NewVault() Vault {
 	return &vault{}
 }
 
-func (v *vault) ConfigMK(mk []byte) {
+func NewVaultWithMK(mk []byte) Vault {
+	v := &vault{}
+	v.configMK(mk)
+	return v
+}
+
+func (v *vault) configMK(mk []byte) {
 	buffer := memguard.NewBufferFromBytes(mk)
 	v.mk = buffer.Seal()
 }
@@ -148,7 +155,17 @@ func (v *vault) LoadSession(bs *session.BinarySession) error {
 		return ErrDecryption
 	}
 
-	v.ConfigMK(mk)
+	v.configMK(mk)
 
+	return nil
+}
+
+func (v *vault) LoadMK() error {
+	mk, err := prompt.ReadMasterPassword(false)
+	if err != nil {
+		return err
+	}
+	defer wipe.Bytes(mk)
+	v.configMK(mk)
 	return nil
 }

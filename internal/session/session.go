@@ -18,7 +18,7 @@ import (
 var (
 	ErrSessionExpired  = errors.New("session expired")
 	ErrSessionInvalid  = errors.New("session file invalid or corrupted")
-	ErrSessionNotFound = errors.New("session file not found")
+	ErrSessionNotFound = errors.New("session file not found\nrun 'export MSK_SESSION=$(msk unlock)' to unlock your session again")
 )
 
 type Session interface {

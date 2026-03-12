@@ -5,9 +5,7 @@ import (
 
 	"github.com/amauribechtoldjr/msk/internal/config"
 	"github.com/amauribechtoldjr/msk/internal/logger"
-	"github.com/amauribechtoldjr/msk/internal/prompt"
 	"github.com/amauribechtoldjr/msk/internal/vault"
-	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/spf13/cobra"
 )
 
@@ -31,8 +29,36 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 			}
 
 			if showConfig {
+				exists, err := conf.Exists()
+				if err != nil {
+					return err
+				}
+
+				if !exists {
+					return config.ErrConfigNotFound
+				}
+
 				logger.PrintInfo(conf.Path)
+				logger.Lb()
 				return nil
+			}
+
+			exists, err := conf.Exists()
+			if err != nil {
+				return err
+			}
+
+			var shouldOverwrite bool
+			if exists {
+				shouldOverwrite, err = conf.CheckOverwrite()
+				if err != nil {
+					return err
+				}
+
+				if !shouldOverwrite {
+					logger.PrintSuccess("Config unchanged\n")
+					return nil
+				}
 			}
 
 			vaultPath, err := conf.CreateVault()
@@ -40,19 +66,16 @@ func NewConfigCmd(vault vault.Vault) *cobra.Command {
 				return err
 			}
 
-			mk, err := prompt.ReadMasterPassword(false)
+			err = vault.LoadMK()
 			if err != nil {
 				return err
 			}
-			defer wipe.Bytes(mk)
-
-			vault.ConfigMK(mk)
 
 			if err := conf.Save(vault, vaultPath); err != nil {
 				return fmt.Errorf("failed to save config: %w", err)
 			}
 
-			logger.PrintSuccess(fmt.Sprintf("Config saved. Vault path: %s\n", vaultPath))
+			logger.PrintSuccess(fmt.Sprintf("Vault path created successfully at: %s\n", vaultPath))
 			return nil
 		},
 	}

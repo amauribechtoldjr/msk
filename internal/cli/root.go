@@ -18,7 +18,7 @@ var ignored_commands = []string{"msk", "version", "v", "help", "unlock", "lock",
 
 func NewMSKCmd() *cobra.Command {
 	holder := &ServiceHolder{}
-	v := vault.NewMSKVault()
+	v := vault.NewVault()
 
 	cmd := &cobra.Command{
 		Use:   "msk",

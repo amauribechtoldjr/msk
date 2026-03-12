@@ -66,23 +66,6 @@ func (c *Config) CheckOverwrite() (bool, error) {
 }
 
 func (c *Config) CreateVault() (string, error) {
-	exists, err := c.Exists()
-	if err != nil {
-		return "", err
-	}
-
-	var shouldOverwrite bool
-	if exists {
-		shouldOverwrite, err = c.CheckOverwrite()
-		if err != nil {
-			return "", err
-		}
-
-		if !shouldOverwrite {
-			return "", errors.New("overwrite cancelled.")
-		}
-	}
-
 	vaultPath, err := c.PromptVaultPath()
 	if err != nil {
 		return "", err

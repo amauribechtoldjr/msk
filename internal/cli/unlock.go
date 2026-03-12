@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/amauribechtoldjr/msk/internal/config"
-	"github.com/amauribechtoldjr/msk/internal/prompt"
 	"github.com/amauribechtoldjr/msk/internal/session"
 	"github.com/amauribechtoldjr/msk/internal/vault"
 	"github.com/amauribechtoldjr/msk/internal/wipe"
@@ -14,20 +13,24 @@ import (
 
 func NewUnlockCmd(vault vault.Vault) *cobra.Command {
 	return &cobra.Command{
-		Use:           "unlock",
-		Short:         "Unlock the vault for the current shell session",
-		SilenceErrors: true,
-		SilenceUsage:  true,
+		Use:   "unlock",
+		Short: "Unlock the vault for the current shell session",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			mk, err := prompt.ReadMasterPassword(false)
+			conf, err := config.NewConfig()
 			if err != nil {
 				return err
 			}
 
-			vault.ConfigMK(mk)
-			defer vault.DestroyMK()
+			exists, err := conf.Exists()
+			if err != nil {
+				return err
+			}
 
-			conf, err := config.NewConfig()
+			if !exists {
+				return config.ErrConfigNotFound
+			}
+
+			err = vault.LoadMK()
 			if err != nil {
 				return err
 			}

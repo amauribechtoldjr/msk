@@ -11,7 +11,7 @@ import (
 
 func TestNewMSKVault(t *testing.T) {
 	t.Run("should initialize the struct correctly", func(t *testing.T) {
-		var crypt Vault = NewMSKVault()
+		var crypt Vault = NewVault()
 		_, ok := crypt.(*vault)
 
 		if !ok {
@@ -21,9 +21,7 @@ func TestNewMSKVault(t *testing.T) {
 }
 
 func newConfiguredCrypt(masterKey string) Vault {
-	crypt := NewMSKVault()
-	crypt.ConfigMK([]byte(masterKey))
-	return crypt
+	return NewVaultWithMK([]byte(masterKey))
 }
 
 func TestEncrypt(t *testing.T) {
@@ -69,7 +67,7 @@ func TestEncrypt(t *testing.T) {
 	})
 
 	t.Run("should return error when master key is not configured", func(t *testing.T) {
-		crypt := NewMSKVault()
+		crypt := NewVault()
 
 		_, err := crypt.Encrypt([]byte("pass"))
 		if err == nil {
@@ -141,7 +139,7 @@ func TestDecrypt(t *testing.T) {
 	})
 
 	t.Run("should return error when master key is empty", func(t *testing.T) {
-		crypt := NewMSKVault()
+		crypt := NewVault()
 		salt, _ := format.RandomBytes(meta.MSK_SALT_SIZE)
 
 		_, err := crypt.Decrypt(salt, []byte("nonce"), []byte("data"))

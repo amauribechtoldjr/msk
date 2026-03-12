@@ -15,10 +15,9 @@ import (
 
 func NewAddCmd(holder *ServiceHolder) *cobra.Command {
 	addCmd := &cobra.Command{
-		Use:           "add <name>",
-		Aliases:       []string{"a"},
-		Short:         "Used to add passwords to the vault.",
-		SilenceErrors: true,
+		Use:     "add <name>",
+		Aliases: []string{"a"},
+		Short:   "Used to add passwords to the vault.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("password name is required")

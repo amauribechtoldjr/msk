@@ -6,11 +6,9 @@ import (
 	"os"
 
 	"github.com/amauribechtoldjr/msk/internal/config"
-	"github.com/amauribechtoldjr/msk/internal/prompt"
 	"github.com/amauribechtoldjr/msk/internal/session"
 	"github.com/amauribechtoldjr/msk/internal/storage"
 	"github.com/amauribechtoldjr/msk/internal/vault"
-	"github.com/amauribechtoldjr/msk/internal/wipe"
 )
 
 func BootstrapWithAuth(vault vault.Vault) (Service, error) {
@@ -45,12 +43,10 @@ func BootstrapWithAuth(vault vault.Vault) (Service, error) {
 		}
 
 	} else {
-		mk, err := prompt.ReadMasterPassword(false)
+		err := vault.LoadMK()
 		if err != nil {
 			return nil, err
 		}
-		defer wipe.Bytes(mk)
-		vault.ConfigMK(mk)
 	}
 
 	vaultPath, err := cfg.Load(vault)

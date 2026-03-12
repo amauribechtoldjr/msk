@@ -11,12 +11,10 @@ import (
 
 func NewDeleteCmd(holder *ServiceHolder) *cobra.Command {
 	delCmd := &cobra.Command{
-		Use:           "del <name>",
-		Aliases:       []string{"d"},
-		Short:         "Used to delete passwords from the vault.",
-		Long:          ``,
-		SilenceErrors: true,
-		SilenceUsage:  true,
+		Use:     "del <name>",
+		Aliases: []string{"d"},
+		Short:   "Used to delete passwords from the vault.",
+		Long:    ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("password name is required")
