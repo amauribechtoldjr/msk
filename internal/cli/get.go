@@ -12,6 +12,8 @@ import (
 )
 
 func NewGetCmd(holder *ServiceHolder) *cobra.Command {
+	var copyToClipboard bool
+
 	getCmd := &cobra.Command{
 		Use:     "get <name>",
 		Aliases: []string{"g"},
@@ -33,19 +35,24 @@ func NewGetCmd(holder *ServiceHolder) *cobra.Command {
 			}
 			defer wipe.Bytes(password)
 
-			err = clip.CopyText(password)
-			if err != nil {
-				wipe.Bytes(password)
-				return fmt.Errorf("failed to copy password to your clipboard: %w", err)
+			if copyToClipboard {
+				err = clip.CopyText(password)
+				if err != nil {
+					return fmt.Errorf("failed to copy password to your clipboard: %w", err)
+				}
+
+				logger.PrintSuccess("Password copied to clipboard (press Ctrl+V to paste)\n\n")
+
+				clip.Clear()
+			} else {
+				fmt.Printf("%s\n", password)
 			}
-
-			logger.PrintSuccess("Password copied to clipboard (press Ctrl+V to paste)\n\n")
-
-			clip.Clear()
 
 			return nil
 		},
 	}
+
+	getCmd.Flags().BoolVarP(&copyToClipboard, "copy", "c", false, "Copy password to clipboard instead of printing to stdout")
 
 	return getCmd
 }
