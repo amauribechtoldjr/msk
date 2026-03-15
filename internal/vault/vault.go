@@ -7,7 +7,6 @@ import (
 	"github.com/amauribechtoldjr/msk/internal/gcm"
 	"github.com/amauribechtoldjr/msk/internal/meta"
 	"github.com/amauribechtoldjr/msk/internal/prompt"
-	"github.com/amauribechtoldjr/msk/internal/session"
 
 	"github.com/amauribechtoldjr/msk/internal/wipe"
 	"github.com/awnumar/memguard"
@@ -19,8 +18,6 @@ type Vault interface {
 	Encrypt([]byte) (*gcm.SaltedGCM, error)
 	Decrypt(salt, nonce, data []byte) ([]byte, error)
 	DestroyMK()
-	CreateSession(token []byte) (*gcm.SealedCGM, error)
-	LoadSession(bs *session.BinarySession) error
 	LoadMK() error
 }
 
@@ -116,48 +113,6 @@ func (v *vault) Encrypt(fileBytes []byte) (*gcm.SaltedGCM, error) {
 	}
 
 	return &gcm.SaltedGCM{Nonce: sealedGCM.Nonce, Salt: salt, CipherData: sealedGCM.CipherData}, nil
-}
-
-func (v *vault) CreateSession(token []byte) (*gcm.SealedCGM, error) {
-	var sealedGCM *gcm.SealedCGM
-
-	err := v.withMk(func(mk []byte) error {
-		key, err := DeriveSessionToken(token)
-		if err != nil {
-			return err
-		}
-		defer wipe.Bytes(key)
-
-		sealedGCM, err = gcm.SealGCM(key, mk)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return sealedGCM, nil
-}
-
-func (v *vault) LoadSession(bs *session.BinarySession) error {
-	key, err := DeriveSessionToken(bs.Token)
-	if err != nil {
-		return err
-	}
-	defer wipe.Bytes(key)
-
-	mk, err := gcm.OpenGCM(bs.Nonce[:], key, bs.CipherData)
-	if err != nil {
-		return ErrDecryption
-	}
-
-	v.configMK(mk)
-
-	return nil
 }
 
 func (v *vault) LoadMK() error {
