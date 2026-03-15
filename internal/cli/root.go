@@ -14,7 +14,7 @@ type ServiceHolder struct {
 	Service app.Service
 }
 
-var ignored_commands = []string{"msk", "version", "v", "help", "unlock", "lock", "config"}
+var ignored_commands = []string{"msk", "version", "v", "help", "unlock", "lock", "config", "daemon"}
 
 func NewMSKCmd() *cobra.Command {
 	holder := &ServiceHolder{}
@@ -83,11 +83,14 @@ func NewMSKCmd() *cobra.Command {
 	versionCmd := NewVersionCmd()
 	cmd.AddCommand(versionCmd)
 
-	unlockCmd := NewUnlockCmd(v)
+	unlockCmd := NewUnlockCmd()
 	cmd.AddCommand(unlockCmd)
 
 	lockCmd := NewLockCmd()
 	cmd.AddCommand(lockCmd)
+
+	daemonCmd := NewDaemonCmd()
+	cmd.AddCommand(daemonCmd)
 
 	cmd.Flags().BoolVarP(&isVersionCommand, "version", "v", false, "Show MSK current version")
 

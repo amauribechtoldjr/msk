@@ -91,7 +91,7 @@ func (c *Config) Load(vault vault.Vault) (string, error) {
 
 	decryptedBytes, err := vault.Decrypt(salt, nonce, data)
 	if err != nil {
-		return "", ErrInvalidConfig
+		return "", fmt.Errorf("%w: %v", ErrInvalidConfig, err)
 	}
 
 	secret, err := format.UnmarshalSecret(decryptedBytes)

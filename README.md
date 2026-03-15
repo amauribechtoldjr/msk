@@ -69,10 +69,10 @@ Generate a random password instead of typing one:
 msk add gitlab --generate --length 24
 ```
 
-Unlock the vault for session-based access (avoids re-entering master password for 15 minutes):
+Unlock the vault (starts a background agent that caches credentials for 15 minutes):
 
 ```bash
-export MSK_SESSION=$(msk unlock)
+msk unlock
 ```
 
 For a full list of commands and flags, run `msk --help` or `msk <command> --help`.

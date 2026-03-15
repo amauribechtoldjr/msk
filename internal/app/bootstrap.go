@@ -2,16 +2,17 @@ package app
 
 import (
 	"errors"
-	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/amauribechtoldjr/msk/internal/agent"
 	"github.com/amauribechtoldjr/msk/internal/config"
-	"github.com/amauribechtoldjr/msk/internal/session"
+	"github.com/amauribechtoldjr/msk/internal/meta"
 	"github.com/amauribechtoldjr/msk/internal/storage"
 	"github.com/amauribechtoldjr/msk/internal/vault"
 )
 
-func BootstrapWithAuth(vault vault.Vault) (Service, error) {
+func BootstrapWithAuth(v vault.Vault) (Service, error) {
 	cfg, err := config.NewConfig()
 	if err != nil {
 		return nil, err
@@ -26,42 +27,41 @@ func BootstrapWithAuth(vault vault.Vault) (Service, error) {
 		return nil, errors.New("invalid config file")
 	}
 
-	if token := os.Getenv("MSK_SESSION"); token != "" {
-		session, err := session.New()
-		if err != nil {
-			return nil, err
+	var activeVault vault.Vault
+	if sockPath := os.Getenv(meta.AgentSocketEnv); sockPath != "" {
+		client := agent.NewClient(sockPath)
+		if err := client.Ping(); err == nil {
+			activeVault = client
+		} else {
+			os.Remove(sockPath)
+			os.Remove(filepath.Dir(sockPath))
+			err := v.LoadMK()
+			if err != nil {
+				return nil, err
+			}
+			activeVault = v
 		}
-
-		binarySession, err := session.LoadFile(token)
-		if err != nil {
-			return nil, err
-		}
-
-		err = vault.LoadSession(binarySession)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load session: %v", err)
-		}
-
 	} else {
-		err := vault.LoadMK()
+		err := v.LoadMK()
 		if err != nil {
 			return nil, err
 		}
+		activeVault = v
 	}
 
-	vaultPath, err := cfg.Load(vault)
+	vaultPath, err := cfg.Load(activeVault)
 	if err != nil {
-		vault.DestroyMK()
+		activeVault.DestroyMK()
 		return nil, err
 	}
 
 	store, err := storage.NewStore(vaultPath)
 	if err != nil {
-		vault.DestroyMK()
+		activeVault.DestroyMK()
 		return nil, err
 	}
 
-	service := NewMSKService(store, vault)
+	service := NewMSKService(store, activeVault)
 
 	return service, nil
 }
